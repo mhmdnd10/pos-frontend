@@ -1,0 +1,103 @@
+import { useQuery } from '@tanstack/react-query'
+import { useParams } from 'react-router-dom'
+import { RecordDetails } from '@/components/shared/details/RecordDetails'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { customerService } from '@/features/customers/services/customerService'
+import { productService } from '@/features/products/services/productService'
+import { saleService } from '@/features/sales/services/saleService'
+import { queryKeys } from '@/lib/constants/queryKeys'
+import { formatDisplayAmount, formatDisplayDate, getPartyDisplayName } from '@/lib/utils/recordDisplay'
+
+export function SaleDetailsPage() {
+  const { id } = useParams()
+  const saleId = Number(id)
+
+  const detailQuery = useQuery({
+    queryKey: queryKeys.sales.byId(saleId),
+    queryFn: () => saleService.getById(saleId),
+    enabled: Number.isFinite(saleId),
+  })
+
+  const customersQuery = useQuery({
+    queryKey: [...queryKeys.customers.all, 'sale-details-customer-lookup'],
+    queryFn: () => customerService.list(1),
+  })
+
+  const productsQuery = useQuery({
+    queryKey: [...queryKeys.products.all, 'sale-details-product-lookup'],
+    queryFn: () => productService.list(1),
+  })
+
+  const customersById = new Map((customersQuery.data?.items ?? []).map((customer) => [customer.id, customer.name]))
+  const productsById = new Map((productsQuery.data?.items ?? []).map((product) => [product.id, product.name]))
+
+  return (
+    <div>
+      <PageHeader title="Sale Details" description="Details from /api/sales/{id}" />
+      {detailQuery.isLoading ? <div className="rounded-md border p-6 text-sm text-muted-foreground">Loading details...</div> : null}
+      {detailQuery.isError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">Failed to load details.</div> : null}
+      {detailQuery.data ? (
+        (() => {
+          const source = detailQuery.data as Record<string, unknown>
+          const customerId = Number(source.customer_id)
+          const mappedCustomerName = Number.isFinite(customerId) ? customersById.get(customerId) : null
+          const rawItems = Array.isArray(source.items)
+            ? source.items
+            : Array.isArray(source.saleItems)
+              ? source.saleItems
+              : Array.isArray(source.sale_items)
+                ? source.sale_items
+              : []
+
+          const normalizedItems = rawItems
+            .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+            .map((item) => {
+              const productId = Number(item.product_id)
+              const relationProduct = item.product
+              const relationProductName =
+                relationProduct && typeof relationProduct === 'object' && !Array.isArray(relationProduct)
+                  ? (relationProduct as Record<string, unknown>).name
+                  : null
+
+              return {
+                product:
+                  typeof relationProductName === 'string' && relationProductName.trim().length > 0
+                    ? relationProductName.trim()
+                    : Number.isFinite(productId)
+                      ? productsById.get(productId) ?? `Product #${productId}`
+                      : '-',
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total_price: item.total_price,
+              }
+            })
+
+          return (
+        <RecordDetails
+          title="Sale"
+          data={{
+            ...source,
+            items: normalizedItems,
+            customer: mappedCustomerName ?? getPartyDisplayName(source, {
+              prefix: 'customer',
+              idKey: 'customer_id',
+              fallbackLabel: 'Customer',
+              allowIdFallback: false,
+            }),
+            sale_date: formatDisplayDate(source.sale_date ?? source.date),
+            payment_method: typeof source.payment_method === 'string' && source.payment_method.trim().length > 0
+              ? source.payment_method
+              : '-',
+            total: formatDisplayAmount(source.total ?? source.total_amount),
+            paid_amount: formatDisplayAmount(source.paid_amount),
+            due_amount: formatDisplayAmount(source.due_amount ?? source.remaining_amount),
+          }}
+          summaryKeys={['customer', 'sale_date', 'payment_method', 'total']}
+          preferredDetailKeys={['customer', 'sale_date', 'payment_method', 'total', 'paid_amount', 'due_amount', 'note', 'created_at', 'updated_at']}
+        />
+          )
+        })()
+      ) : null}
+    </div>
+  )
+}

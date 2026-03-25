@@ -1,0 +1,1 @@
+export type DashboardResponse = Record<string, unknown>
