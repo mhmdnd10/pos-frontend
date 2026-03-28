@@ -258,17 +258,87 @@ export function ReturnSalePage() {
       return
     }
 
-    const rows = returnLines
-      .map((line) => {
-        const qty = Number(line.quantity || 0)
-        const unit = Number(line.unit_price || 0)
-        const lineTotal = qty * unit
-        return `<tr><td>${line.product_name}</td><td>${qty}</td><td>${unit.toFixed(2)}</td><td>${lineTotal.toFixed(2)}</td></tr>`
-      })
-      .join('')
+    const now = new Date()
+    const lineWidth = 32
+    const divider = '-'.repeat(lineWidth)
 
-    const heading = mode === 'by-invoice' ? 'Return / Invoice Update' : 'Quick Return'
-    const invoiceBlock = mode === 'by-invoice' && activeInvoice ? `<p><strong>Invoice:</strong> ${activeInvoice}</p>` : ''
+    const sanitizeAscii = (value: string) =>
+      value
+        .normalize('NFKD')
+        .replace(/[^\x20-\x7E]/g, '')
+        .trim()
+
+    const formatMoney = (value: number) => value.toFixed(2)
+
+    const receiptDate = (() => {
+      const [year, month, day] = saleDate.split('-')
+      if (year && month && day) {
+        return `${Number(day)}/${Number(month)}/${year}`
+      }
+      return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`
+    })()
+
+    const receiptTime = (() => {
+      const hours24 = now.getHours()
+      const hours12 = hours24 % 12 || 12
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const suffix = hours24 >= 12 ? 'pm' : 'am'
+      return `${hours12}:${minutes}${suffix}`
+    })()
+
+    const isWalkinReturn = mode === 'without-invoice'
+    const returnType = isWalkinReturn ? 'QUICK RETURN' : 'RETURN/INVOICE UPDATE'
+
+    const itemHeader = `${'Item'.padEnd(14)}${'Qty'.padStart(4)}${'Price'.padStart(7)}${'Total'.padStart(7)}`
+    const itemLines = returnLines.map((line) => {
+      const itemName = sanitizeAscii(line.product_name || 'Item')
+        .slice(0, 14)
+        .padEnd(14)
+      const qty = String(Math.floor(Number(line.quantity) || 0)).padStart(4)
+      const price = formatMoney(Number(line.unit_price || 0)).padStart(7)
+      const lineTotal = formatMoney(Number(line.quantity || 0) * Number(line.unit_price || 0)).padStart(7)
+      return `${itemName}${qty}${price}${lineTotal}`
+    })
+
+    const displayTotal = isWalkinReturn ? -total : total
+    const displayPaid = isWalkinReturn ? -Number(paidAmount || 0) : Number(paidAmount || 0)
+    const displayRemaining = isWalkinReturn ? -remaining : remaining
+
+    let receiptLines = [
+      'HOME DECORATION',
+      'AL QMATIYEH',
+      '03109497 | 03909497',
+      divider,
+      returnType,
+    ]
+
+    if (!isWalkinReturn && activeInvoice) {
+      receiptLines.push(`Invoice  : ${sanitizeAscii(activeInvoice)}`)
+    }
+
+    receiptLines = [
+      ...receiptLines,
+      `Date     : ${receiptDate}   ${receiptTime}`,
+      divider,
+      itemHeader,
+      ...itemLines,
+      divider,
+      `Total    : ${formatMoney(displayTotal).padStart(20)}`,
+      `Paid     : ${formatMoney(displayPaid).padStart(20)}`,
+      `Remaining: ${formatMoney(displayRemaining).padStart(20)}`,
+      divider,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+    ]
 
     const html = `<!doctype html>
 <html>
@@ -276,33 +346,22 @@ export function ReturnSalePage() {
   <meta charset="utf-8" />
   <title>Return Receipt</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 16px; color: #111; }
-    h1 { margin: 0 0 8px; font-size: 18px; }
-    p { margin: 4px 0; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; text-align: left; }
-    th { background: #f4f4f4; }
-    .total { margin-top: 12px; font-weight: 700; }
+    @page { size: 80mm auto; margin: 1.5mm; }
+    html, body { margin: 0; padding: 0; color: #111; }
+    body { font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+    .receipt {
+      width: 72mm;
+      margin: 0 auto;
+      padding: 0.5mm 1mm 0 1mm;
+      line-height: 1.25;
+      white-space: pre;
+      direction: ltr;
+      text-align: ${isWalkinReturn ? 'center' : 'left'};
+    }
   </style>
 </head>
 <body>
-  <h1>${heading}</h1>
-  ${invoiceBlock}
-  <p><strong>Date:</strong> ${saleDate}</p>
-  <p><strong>Paid:</strong> ${Number(paidAmount || 0).toFixed(2)}</p>
-  <p><strong>Remaining:</strong> ${remaining.toFixed(2)}</p>
-  <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Qty</th>
-        <th>Price</th>
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <p class="total">Grand Total: ${total.toFixed(2)}</p>
+  <pre class="receipt">${receiptLines.join('\r\n')}</pre>
 </body>
 </html>`
 
