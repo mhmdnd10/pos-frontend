@@ -16,7 +16,7 @@ export const productService = {
     const endpoint = Number.isFinite(categoryId) ? endpoints.products.byCategory(Number(categoryId)) : endpoints.products.list
     const params = {
       page,
-      ...(search ? { search, q: search } : {}),
+      ...(search ? { search, q: search, keyword: search, name: search } : {}),
     }
 
     const { data } = await httpClient.get(endpoint, { params })
@@ -25,6 +25,11 @@ export const productService = {
 
   async create(payload: ProductPayload) {
     const { data } = await httpClient.post(endpoints.products.list, payload)
+    return normalizeItemResponse<Product>(data)
+  },
+
+  async getById(id: number) {
+    const { data } = await httpClient.get(endpoints.products.byId(id))
     return normalizeItemResponse<Product>(data)
   },
 

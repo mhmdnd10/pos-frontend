@@ -31,6 +31,16 @@ export function SaleDetailsPage() {
   const customersById = new Map((customersQuery.data?.items ?? []).map((customer) => [customer.id, customer.name]))
   const productsById = new Map((productsQuery.data?.items ?? []).map((product) => [product.id, product.name]))
 
+  function resolveInvoiceNumber(source: Record<string, unknown>) {
+    const invoiceCandidate = source.invoice_number
+    if (typeof invoiceCandidate === 'string' && invoiceCandidate.trim().length > 0) {
+      return invoiceCandidate
+    }
+
+    const id = Number(source.id)
+    return Number.isFinite(id) && id > 0 ? `INV-${String(id).padStart(6, '0')}` : '-'
+  }
+
   return (
     <div>
       <PageHeader title="Sale Details" description="Details from /api/sales/{id}" />
@@ -77,6 +87,7 @@ export function SaleDetailsPage() {
           title="Sale"
           data={{
             ...source,
+            invoice_number: resolveInvoiceNumber(source),
             items: normalizedItems,
             customer: mappedCustomerName ?? getPartyDisplayName(source, {
               prefix: 'customer',
@@ -92,8 +103,8 @@ export function SaleDetailsPage() {
             paid_amount: formatDisplayAmount(source.paid_amount),
             due_amount: formatDisplayAmount(source.due_amount ?? source.remaining_amount),
           }}
-          summaryKeys={['customer', 'sale_date', 'payment_method', 'total']}
-          preferredDetailKeys={['customer', 'sale_date', 'payment_method', 'total', 'paid_amount', 'due_amount', 'note', 'created_at', 'updated_at']}
+          summaryKeys={['invoice_number', 'customer', 'sale_date', 'payment_method', 'total']}
+          preferredDetailKeys={['invoice_number', 'customer', 'sale_date', 'payment_method', 'total', 'paid_amount', 'due_amount', 'note', 'created_at', 'updated_at']}
         />
           )
         })()

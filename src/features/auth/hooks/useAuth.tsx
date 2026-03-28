@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import { authService } from '@/features/auth/services/authService'
-import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from '@/features/auth/types'
+import type { AuthMessageResponse, AuthResponse, AuthUser, LoginRequest, RegisterRequest } from '@/features/auth/types'
 import { setUnauthorizedHandler } from '@/lib/api/httpClient'
 import { clearAuthSession, getAuthToken, getStoredUser, setAuthSession } from '@/lib/api/session'
 
@@ -11,7 +11,7 @@ interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
   login: (payload: LoginRequest) => Promise<void>
-  register: (payload: RegisterRequest) => Promise<void>
+  register: (payload: RegisterRequest) => Promise<AuthMessageResponse>
   logout: () => Promise<void>
   setAuthData: (payload: AuthResponse) => void
 }
@@ -44,9 +44,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [setAuthData])
 
   const register = useCallback(async (payload: RegisterRequest) => {
-    const data = await authService.register(payload)
-    setAuthData(data)
-  }, [setAuthData])
+    return authService.register(payload)
+  }, [])
 
   const logout = useCallback(async () => {
     try {

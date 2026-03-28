@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { routePaths } from '@/app/router/routePaths'
 import { DataTable } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PaginationControls } from '@/components/shared/pagination/PaginationControls'
@@ -25,18 +26,31 @@ export function SalesPage() {
 
   const customersById = new Map((customersQuery.data?.items ?? []).map((customer) => [customer.id, customer.name]))
 
+  function resolveInvoiceNumber(row: Record<string, unknown>) {
+    const invoiceCandidate = row.invoice_number
+    if (typeof invoiceCandidate === 'string' && invoiceCandidate.trim().length > 0) {
+      return invoiceCandidate
+    }
+
+    const id = Number(row.id)
+    return Number.isFinite(id) && id > 0 ? `INV-${String(id).padStart(6, '0')}` : '-'
+  }
+
   return (
     <div>
       <PageHeader
         title="Sales"
         description="Sales records from /api/sales"
         actions={
-          <Button asChild>
-            <Link to="/sales/new">
+          <div className="flex gap-2">
+            <Button type="button" onClick={() => window.open(routePaths.salesNew, '_blank', 'noopener,noreferrer')}>
               <Plus className="h-4 w-4" />
               New Sale
-            </Link>
-          </Button>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to={routePaths.salesReturns}>Return Sale</Link>
+            </Button>
+          </div>
         }
       />
 
@@ -69,6 +83,11 @@ export function SalesPage() {
                 key: 'sale_date',
                 header: 'Date',
                 render: (row) => formatDisplayDate((row as Record<string, unknown>).sale_date ?? (row as Record<string, unknown>).date),
+              },
+              {
+                key: 'invoice_number',
+                header: 'Invoice',
+                render: (row) => resolveInvoiceNumber(row as Record<string, unknown>),
               },
               {
                 key: 'payment_method',

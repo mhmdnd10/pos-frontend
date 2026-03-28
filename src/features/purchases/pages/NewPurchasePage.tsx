@@ -7,12 +7,12 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ProductSearchSelect } from '@/components/shared/forms/ProductSearchSelect'
 import { Button } from '@/components/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card'
 import { Input } from '@/components/shared/ui/input'
 import { Label } from '@/components/shared/ui/label'
 import { Textarea } from '@/components/shared/ui/textarea'
-import { productService } from '@/features/products/services/productService'
 import { purchaseService } from '@/features/purchases/services/purchaseService'
 import { supplierService } from '@/features/suppliers/services/supplierService'
 import { getApiErrorMessage } from '@/lib/api/response'
@@ -72,11 +72,6 @@ export function NewPurchasePage() {
   const suppliersQuery = useQuery({
     queryKey: [...queryKeys.suppliers.all, 'for-purchase-form'],
     queryFn: () => supplierService.list(1),
-  })
-
-  const productsQuery = useQuery({
-    queryKey: [...queryKeys.products.all, 'for-purchase-form'],
-    queryFn: () => productService.list(1),
   })
 
   const watchedItems = useWatch({ control: form.control, name: 'items' })
@@ -226,17 +221,32 @@ export function NewPurchasePage() {
                 <div key={field.id} className="grid gap-3 rounded-md border p-3 md:grid-cols-12">
                   <div className="md:col-span-5 space-y-2">
                     <Label>Product</Label>
-                    <select
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      {...form.register(`items.${index}.product_id`)}
-                    >
-                      <option value="">Select product</option>
-                      {(productsQuery.data?.items ?? []).map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
+                    <ProductSearchSelect
+                      value={form.getValues(`items.${index}.product_id`)}
+                      onClear={() => {
+                        form.setValue(`items.${index}.product_id`, '', {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }}
+                      onSelect={(product) => {
+                        form.setValue(`items.${index}.product_id`, String(product.id), {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+
+                        const purchasePrice = Number(product.purchase_price ?? product.cost_price ?? product.price ?? 0)
+                        if (Number.isFinite(purchasePrice) && purchasePrice > 0) {
+                          form.setValue(`items.${index}.unit_price`, String(purchasePrice), {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                        }
+                      }}
+                    />
                     {form.formState.errors.items?.[index]?.product_id?.message ? (
                       <p className="text-xs text-destructive">{form.formState.errors.items[index]?.product_id?.message}</p>
                     ) : null}
@@ -298,7 +308,7 @@ export function NewPurchasePage() {
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" disabled={createMutation.isPending || suppliersQuery.isLoading || productsQuery.isLoading}>
+              <Button type="submit" disabled={createMutation.isPending || suppliersQuery.isLoading}>
                 {createMutation.isPending ? 'Saving...' : 'Create Purchase'}
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate('/purchases')}>

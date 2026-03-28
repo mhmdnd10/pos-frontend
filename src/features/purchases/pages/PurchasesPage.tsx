@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { routePaths } from '@/app/router/routePaths'
 import { DataTable } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PaginationControls } from '@/components/shared/pagination/PaginationControls'
@@ -31,11 +32,9 @@ export function PurchasesPage() {
         title="Purchases"
         description="Purchase records from /api/purchases"
         actions={
-          <Button asChild>
-            <Link to="/purchases/new">
+          <Button type="button" onClick={() => window.open(routePaths.purchasesNew, '_blank', 'noopener,noreferrer')}>
               <Plus className="h-4 w-4" />
               New Purchase
-            </Link>
           </Button>
         }
       />

@@ -25,9 +25,9 @@ export function RegisterPage() {
 
   const registerMutation = useMutation({
     mutationFn: register,
-    onSuccess: () => {
-      toast.success('Account created successfully.')
-      navigate(routePaths.dashboard, { replace: true })
+    onSuccess: (response, variables) => {
+      toast.success(response.message || 'Account created. Verification email sent.')
+      navigate(`${routePaths.registerVerificationSent}?email=${encodeURIComponent(variables.email)}`, { replace: true })
     },
     onError: () => {
       toast.error('Registration failed. Please check your details.')
@@ -42,7 +42,15 @@ export function RegisterPage() {
       footerLinkLabel="Sign in"
       footerLinkTo={routePaths.login}
     >
-      <form className="space-y-4" onSubmit={form.handleSubmit((values) => registerMutation.mutate(values))}>
+      <form
+        className="space-y-4"
+        onSubmit={form.handleSubmit((values) =>
+          registerMutation.mutate({
+            ...values,
+            role: 'admin',
+          })
+        )}
+      >
         <FormField form={form} name="name" label="Name" type="text" placeholder="Admin User" autoComplete="name" />
         <FormField form={form} name="email" label="Email" type="email" placeholder="admin@example.com" autoComplete="email" />
         <FormField

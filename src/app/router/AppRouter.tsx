@@ -3,8 +3,10 @@ import { ProtectedLayout } from '@/app/layouts/ProtectedLayout'
 import { routePaths } from '@/app/router/routePaths'
 import { RequireAuth } from '@/features/auth/components/RequireAuth'
 import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage'
+import { ForgotPasswordSentPage } from '@/features/auth/pages/ForgotPasswordSentPage'
 import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
+import { RegisterVerificationSentPage } from '@/features/auth/pages/RegisterVerificationSentPage'
 import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage'
@@ -21,6 +23,7 @@ import { NewPurchasePage } from '@/features/purchases/pages/NewPurchasePage'
 import { PurchaseDetailsPage } from '@/features/purchases/pages/PurchaseDetailsPage'
 import { PurchasesPage } from '@/features/purchases/pages/PurchasesPage'
 import { NewSalePage } from '@/features/sales/pages/NewSalePage'
+import { ReturnSalePage } from '@/features/sales/pages/ReturnSalePage'
 import { SaleDetailsPage } from '@/features/sales/pages/SaleDetailsPage'
 import { SalesPage } from '@/features/sales/pages/SalesPage'
 import { SupplierPaymentDetailsPage } from '@/features/supplier-payments/pages/SupplierPaymentDetailsPage'
@@ -43,8 +46,16 @@ const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
+    path: routePaths.registerVerificationSent,
+    element: <RegisterVerificationSentPage />,
+  },
+  {
     path: routePaths.forgotPassword,
     element: <ForgotPasswordPage />,
+  },
+  {
+    path: routePaths.forgotPasswordSent,
+    element: <ForgotPasswordSentPage />,
   },
   {
     path: routePaths.resetPassword,
@@ -115,6 +126,10 @@ const router = createBrowserRouter([
           {
             path: routePaths.salesNew,
             element: <NewSalePage />,
+          },
+          {
+            path: routePaths.salesReturns,
+            element: <ReturnSalePage />,
           },
           {
             path: '/sales/:id',

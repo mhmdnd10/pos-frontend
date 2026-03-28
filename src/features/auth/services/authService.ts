@@ -27,8 +27,8 @@ function normalizeAuthResponse(payload: RawAuthResponse): AuthResponse {
 
 export const authService = {
   async register(payload: RegisterRequest) {
-    const { data } = await httpClient.post<RawAuthResponse>(endpoints.auth.register, payload)
-    return normalizeAuthResponse(data)
+    const { data } = await httpClient.post<AuthMessageResponse>(endpoints.auth.register, payload)
+    return data
   },
 
   async login(payload: LoginRequest) {

@@ -1,7 +1,9 @@
 export const routePaths = {
   login: '/login',
   register: '/register',
+  registerVerificationSent: '/register/verify-email-sent',
   forgotPassword: '/forgot-password',
+  forgotPasswordSent: '/forgot-password/sent',
   resetPassword: '/reset-password',
   dashboard: '/dashboard',
   categories: '/categories',
@@ -13,6 +15,7 @@ export const routePaths = {
   purchasesNew: '/purchases/new',
   sales: '/sales',
   salesNew: '/sales/new',
+  salesReturns: '/sales/returns',
   customerPayments: '/customer-payments',
   customerPaymentsNew: '/customer-payments/new',
   supplierPayments: '/supplier-payments',

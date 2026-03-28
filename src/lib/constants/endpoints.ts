@@ -30,6 +30,10 @@ export const endpoints = {
   sales: {
     list: '/api/sales',
     byId: (id: string | number) => `/api/sales/${id}`,
+    invoiceNumber: (id: string | number) => `/api/sales/invoice/${id}`,
+    byInvoice: (invoiceNumber: string) => `/api/sales/invoice/${encodeURIComponent(invoiceNumber)}`,
+    updateByInvoice: (invoiceNumber: string) => `/api/sales/invoice/${encodeURIComponent(invoiceNumber)}`,
+    quickReturn: '/api/sales/quick-return',
   },
   customers: {
     list: '/api/customers',

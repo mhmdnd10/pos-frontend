@@ -1,19 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { Printer, Search, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ProductSearchSelect } from '@/components/shared/forms/ProductSearchSelect'
 import { Button } from '@/components/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card'
 import { Input } from '@/components/shared/ui/input'
 import { Label } from '@/components/shared/ui/label'
 import { Textarea } from '@/components/shared/ui/textarea'
 import { customerService } from '@/features/customers/services/customerService'
-import { productService } from '@/features/products/services/productService'
 import { saleService } from '@/features/sales/services/saleService'
 import { getStoredUser } from '@/lib/api/session'
 import { getApiErrorMessage } from '@/lib/api/response'
@@ -36,6 +36,52 @@ const saleSchema = z.object({
 
 type SaleForm = z.infer<typeof saleSchema>
 
+interface ParsedItem {
+  product_id: number
+  quantity: number
+  unit_price: number
+  line_total: number
+}
+
+interface SaleCreatePayload {
+  customer_id: number | null
+  shop_id: number
+  sale_date: string
+  date: string
+  payment_method: string
+  subtotal: number
+  total_amount: number
+  paid_amount: number
+  due_amount: number
+  note?: string
+  items: ParsedItem[]
+}
+
+interface ReceiptItem {
+  name: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+interface PrintableReceipt {
+  invoiceNumber: string
+  saleDate: string
+  customerName: string
+  customerPhone?: string
+  items: ReceiptItem[]
+  total: number
+  paid: number
+  remaining: number
+}
+
+interface ProductMeta {
+  name: string
+  salePrice: number
+  purchasePrice: number
+  availableQuantity: number
+}
+
 function toPositiveNumber(value: string) {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
@@ -51,10 +97,142 @@ function toNonNegativeNumber(value?: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
 }
 
+function toNonNegativeNumberOrNull(value?: string) {
+  const parsed = Number(value || 0)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function buildReceiptHtml(receipt: PrintableReceipt) {
+  const now = new Date()
+  const lineWidth = 32
+  const divider = '-'.repeat(lineWidth)
+
+  const sanitizeAscii = (value: string) =>
+    value
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7E]/g, '')
+      .trim()
+
+  const trimText = (value: string, maxLength: number) => {
+    if (value.length <= maxLength) {
+      return value
+    }
+
+    return `${value.slice(0, Math.max(maxLength - 3, 1))}...`
+  }
+
+  const formatMoney = (value: number) => value.toFixed(2)
+
+  const receiptDate = (() => {
+    const [year, month, day] = receipt.saleDate.split('-')
+    if (year && month && day) {
+      return `${Number(day)}/${Number(month)}/${year}`
+    }
+
+    return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`
+  })()
+
+  const receiptTime = (() => {
+    const hours24 = now.getHours()
+    const hours12 = hours24 % 12 || 12
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const suffix = hours24 >= 12 ? 'pm' : 'am'
+    return `${hours12}:${minutes}${suffix}`
+  })()
+
+  const customerNameRaw =
+    receipt.customerName && receipt.customerName !== 'Walk-in Customer' ? receipt.customerName : 'Walk-in Customer'
+  const customerName = trimText(sanitizeAscii(customerNameRaw) || 'Walk-in Customer', lineWidth - 10)
+  const customerPhone = sanitizeAscii(receipt.customerPhone?.trim() || '-') || '-'
+
+  const itemHeader = `${'Item'.padEnd(14)}${'Qty'.padStart(4)}${'Price'.padStart(7)}${'Total'.padStart(7)}`
+  const itemLines = receipt.items.map((item) => {
+    const itemName = trimText(sanitizeAscii(item.name) || 'Item', 14).padEnd(14)
+    const qty = String(item.quantity).padStart(4)
+    const price = formatMoney(item.unitPrice).padStart(7)
+    const total = formatMoney(item.lineTotal).padStart(7)
+    return `${itemName}${qty}${price}${total}`
+  })
+
+  const receiptLines = [
+    'HOME DECORATION',
+    'AL QMATIYEH',
+    '03109497 | 03909497',
+    divider,
+    `Customer: ${customerName}`,
+    `Phone   : ${customerPhone}`,
+    divider,
+    `Invoice : ${sanitizeAscii(receipt.invoiceNumber) || 'N/A'}`,
+    `Date    : ${receiptDate}   ${receiptTime}`,
+    divider,
+    itemHeader,
+    ...itemLines,
+    divider,
+    `Total    : ${formatMoney(receipt.total).padStart(20)}`,
+    `Paid     : ${formatMoney(receipt.paid).padStart(20)}`,
+    `Remaining: ${formatMoney(receipt.remaining).padStart(20)}`,
+    divider,
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+  ]
+
+  return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Sale Receipt</title>
+        <style>
+          @page { size: 80mm auto; margin: 1.5mm; }
+          html, body { margin: 0; padding: 0; color: #111; }
+          body { font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+          .receipt {
+            width: 72mm;
+            margin: 0 auto;
+            padding: 0.5mm 1mm 0 1mm;
+            line-height: 1.25;
+            white-space: pre;
+            direction: ltr;
+            text-align: left;
+          }
+        </style>
+      </head>
+      <body>
+        <pre class="receipt">${escapeHtml(receiptLines.join('\r\n'))}</pre>
+      </body>
+    </html>
+  `
+}
+
 export function NewSalePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const walkInCustomerId = Number(import.meta.env.VITE_WALKIN_CUSTOMER_ID ?? '')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState('')
+  const [selectedCustomerName, setSelectedCustomerName] = useState('')
+  const [selectedCustomerPhone, setSelectedCustomerPhone] = useState('')
+  const [productPickerValue, setProductPickerValue] = useState('')
+  const [productNameById, setProductNameById] = useState<Record<number, string>>({})
+  const [productMetaById, setProductMetaById] = useState<Record<number, ProductMeta>>({})
+  const [lastPrintableReceipt, setLastPrintableReceipt] = useState<PrintableReceipt | null>(null)
 
   const form = useForm<SaleForm>({
     resolver: zodResolver(saleSchema),
@@ -64,7 +242,7 @@ export function NewSalePage() {
       payment_method: 'cash',
       paid_amount: '0',
       note: '',
-      items: [{ product_id: '', quantity: '1', unit_price: '0' }],
+      items: [],
     },
   })
 
@@ -74,14 +252,17 @@ export function NewSalePage() {
   })
 
   const customersQuery = useQuery({
-    queryKey: [...queryKeys.customers.all, 'for-sale-form'],
-    queryFn: () => customerService.list(1),
+    queryKey: [...queryKeys.customers.all, 'for-sale-form', debouncedCustomerSearch],
+    queryFn: () => customerService.list(1, debouncedCustomerSearch),
   })
 
-  const productsQuery = useQuery({
-    queryKey: [...queryKeys.products.all, 'for-sale-form'],
-    queryFn: () => productService.list(1),
-  })
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedCustomerSearch(customerSearch.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [customerSearch])
 
   const watchedItems = useWatch({ control: form.control, name: 'items' })
   const watchedPaidAmount = useWatch({ control: form.control, name: 'paid_amount' })
@@ -101,9 +282,37 @@ export function NewSalePage() {
   const dueAmount = Math.max(total - paidAmount, 0)
 
   const createMutation = useMutation({
-    mutationFn: saleService.create,
-    onSuccess: async (response) => {
+    mutationFn: (payload: SaleCreatePayload) => saleService.create(payload as unknown as Record<string, unknown>),
+    onSuccess: async (response, variables) => {
       const createdId = Number(response.id)
+      let invoiceNumber = typeof response.invoice_number === 'string' ? response.invoice_number : ''
+
+      if (Number.isFinite(createdId) && createdId > 0) {
+        try {
+          invoiceNumber = await saleService.getInvoiceNumber(createdId)
+        } catch {
+          invoiceNumber = invoiceNumber || `INV-${String(createdId).padStart(6, '0')}`
+        }
+      }
+
+      const receiptItems: ReceiptItem[] = variables.items.map((item) => ({
+        name: productNameById[item.product_id] ?? `Product #${item.product_id}`,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        lineTotal: item.line_total,
+      }))
+
+      setLastPrintableReceipt({
+        invoiceNumber: invoiceNumber || 'N/A',
+        saleDate: variables.sale_date,
+        customerName: selectedCustomerName || 'Walk-in Customer',
+        customerPhone: selectedCustomerPhone || undefined,
+        items: receiptItems,
+        total: variables.total_amount,
+        paid: variables.paid_amount,
+        remaining: Math.max(variables.total_amount - variables.paid_amount, 0),
+      })
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.sales.all }),
         queryClient.invalidateQueries({ queryKey: queryKeys.customers.all }),
@@ -117,6 +326,83 @@ export function NewSalePage() {
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create sale.')),
   })
+
+  function printReceipt(receipt: PrintableReceipt) {
+    const frame = document.createElement('iframe')
+    frame.style.position = 'fixed'
+    frame.style.width = '0'
+    frame.style.height = '0'
+    frame.style.right = '0'
+    frame.style.bottom = '0'
+    frame.style.border = '0'
+    document.body.appendChild(frame)
+
+    const frameWindow = frame.contentWindow
+    if (!frameWindow) {
+      document.body.removeChild(frame)
+      toast.error('Unable to initialize printer preview.')
+      return
+    }
+
+    frameWindow.document.open()
+    frameWindow.document.write(buildReceiptHtml(receipt))
+    frameWindow.document.close()
+
+    const runPrint = () => {
+      try {
+        frameWindow.focus()
+        frameWindow.print()
+      } finally {
+        window.setTimeout(() => {
+          if (document.body.contains(frame)) {
+            document.body.removeChild(frame)
+          }
+        }, 1000)
+      }
+    }
+
+    if (frameWindow.document.readyState === 'complete') {
+      runPrint()
+    } else {
+      frame.onload = runPrint
+    }
+  }
+
+  function buildDraftReceipt(values: SaleForm): PrintableReceipt | null {
+    const draftItems = values.items
+      .map((item) => {
+        const productId = toPositiveNumber(item.product_id)
+        const quantity = toPositiveInteger(item.quantity)
+        const unitPrice = toNonNegativeNumberOrNull(item.unit_price)
+
+        if (!productId || !quantity || unitPrice === null) {
+          return null
+        }
+
+        return {
+          name: productNameById[productId] ?? `Product #${productId}`,
+          quantity,
+          unitPrice,
+          lineTotal: quantity * unitPrice,
+        }
+      })
+      .filter((item): item is ReceiptItem => item !== null)
+
+    if (draftItems.length === 0) {
+      return null
+    }
+
+    return {
+      invoiceNumber: lastPrintableReceipt?.invoiceNumber ?? 'Pending (save sale first)',
+      saleDate: values.sale_date,
+      customerName: selectedCustomerName || 'Walk-in Customer',
+      customerPhone: selectedCustomerPhone || undefined,
+      items: draftItems,
+      total,
+      paid: paidAmount,
+      remaining: Math.max(total - paidAmount, 0),
+    }
+  }
 
   return (
     <div className="max-w-5xl">
@@ -139,22 +425,13 @@ export function NewSalePage() {
               }
 
               const selectedCustomerId = Number(values.customer_id ?? '')
-              const hasSelectedCustomer = Number.isFinite(selectedCustomerId) && selectedCustomerId > 0
-              const hasWalkInCustomer = Number.isFinite(walkInCustomerId) && walkInCustomerId > 0
-              const customerId = hasSelectedCustomer ? selectedCustomerId : hasWalkInCustomer ? walkInCustomerId : null
-
-              if (!customerId) {
-                form.setError('customer_id', {
-                  message: 'Select customer or configure VITE_WALKIN_CUSTOMER_ID for walk-in sales',
-                })
-                return
-              }
+              const customerId = Number.isFinite(selectedCustomerId) && selectedCustomerId > 0 ? selectedCustomerId : null
 
               const parsedItems = values.items
                 .map((item, index) => {
                   const productId = toPositiveNumber(item.product_id)
                   const quantity = toPositiveInteger(item.quantity)
-                  const unitPrice = toPositiveNumber(item.unit_price)
+                  const unitPrice = toNonNegativeNumberOrNull(item.unit_price)
 
                   if (!productId) {
                     form.setError(`items.${index}.product_id`, { message: 'Select product' })
@@ -166,7 +443,7 @@ export function NewSalePage() {
                     return null
                   }
 
-                  if (!unitPrice) {
+                  if (unitPrice === null) {
                     form.setError(`items.${index}.unit_price`, { message: 'Enter valid unit price' })
                     return null
                   }
@@ -189,7 +466,7 @@ export function NewSalePage() {
                 return
               }
 
-              createMutation.mutate({
+              const payload: SaleCreatePayload = {
                 customer_id: customerId,
                 shop_id: resolvedShopId,
                 sale_date: values.sale_date,
@@ -201,30 +478,85 @@ export function NewSalePage() {
                 due_amount: dueAmount,
                 note: values.note,
                 items: parsedItems,
-              })
+              }
+
+              createMutation.mutate(payload)
             })}
           >
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="customer_id">Customer</Label>
-                <select
-                  id="customer_id"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  {...form.register('customer_id')}
-                >
-                  <option value="">Select customer</option>
-                  {(customersQuery.data?.items ?? []).map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
+                <input type="hidden" {...form.register('customer_id')} />
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="customer_id"
+                      value={customerSearch}
+                      onChange={(event) => {
+                        setCustomerSearch(event.target.value)
+                      }}
+                      className="pl-9"
+                      placeholder="Search customer by name or phone"
+                    />
+                  </div>
+
+                  {customerSearch.trim().length > 0 ? (
+                    <div className="max-h-44 overflow-y-auto rounded-md border bg-background">
+                      {(customersQuery.data?.items ?? []).length > 0 ? (
+                        (customersQuery.data?.items ?? []).map((customer) => (
+                          <button
+                            key={customer.id}
+                            type="button"
+                            className="block w-full border-b px-3 py-2 text-left text-sm hover:bg-muted"
+                            onClick={() => {
+                              form.setValue('customer_id', String(customer.id), {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
+                              setCustomerSearch(customer.name)
+                              setSelectedCustomerName(customer.name)
+                              setSelectedCustomerPhone(customer.phone ?? '')
+                            }}
+                          >
+                            <span className="font-medium">{customer.name}</span>
+                            {customer.phone ? <span className="ml-2 text-xs text-muted-foreground">{customer.phone}</span> : null}
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">No customers found.</p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {selectedCustomerName ? (
+                    <div className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-sm">
+                      <span>Selected: {selectedCustomerName}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          form.setValue('customer_id', '', {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                          setSelectedCustomerName('')
+                          setSelectedCustomerPhone('')
+                          setCustomerSearch('')
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
                 {form.formState.errors.customer_id?.message ? (
                   <p className="text-xs text-destructive">{form.formState.errors.customer_id.message}</p>
                 ) : null}
-                <p className="text-xs text-muted-foreground">
-                  Leave empty for walk-in sale if `VITE_WALKIN_CUSTOMER_ID` is configured.
-                </p>
+                <p className="text-xs text-muted-foreground">Customer is optional. Leave empty for walk-in sale.</p>
               </div>
 
               <div className="space-y-2">
@@ -257,81 +589,128 @@ export function NewSalePage() {
             </div>
 
             <div className="space-y-3 rounded-lg border p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Items</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append({ product_id: '', quantity: '1', unit_price: '0' })}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Item
-                </Button>
+              <h3 className="text-sm font-medium">Items</h3>
+
+              <div className="space-y-2">
+                <Label>Search Product</Label>
+                <ProductSearchSelect
+                  value={productPickerValue}
+                  onClear={() => setProductPickerValue('')}
+                  onSelect={(product) => {
+                    const productId = Number(product.id)
+                    if (!Number.isFinite(productId) || productId <= 0) {
+                      return
+                    }
+
+                    const alreadyAdded = form.getValues('items').some((item) => Number(item.product_id) === productId)
+                    if (alreadyAdded) {
+                      toast.info('Product already added.')
+                      return
+                    }
+
+                    const salePrice = Number(product.sale_price ?? product.price ?? 0)
+                    const purchasePrice = Number(product.purchase_price ?? product.cost_price ?? 0)
+                    const availableQuantity = Number(product.stock_quantity ?? product.stock ?? 0)
+
+                    append({
+                      product_id: String(productId),
+                      quantity: '1',
+                      unit_price: String(Number.isFinite(salePrice) && salePrice >= 0 ? salePrice : 0),
+                    })
+
+                    setProductNameById((previous) => ({
+                      ...previous,
+                      [productId]: product.name || `Product #${productId}`,
+                    }))
+
+                    setProductMetaById((previous) => ({
+                      ...previous,
+                      [productId]: {
+                        name: product.name || `Product #${productId}`,
+                        salePrice: Number.isFinite(salePrice) && salePrice >= 0 ? salePrice : 0,
+                        purchasePrice: Number.isFinite(purchasePrice) && purchasePrice >= 0 ? purchasePrice : 0,
+                        availableQuantity: Number.isFinite(availableQuantity) ? availableQuantity : 0,
+                      },
+                    }))
+
+                    setProductPickerValue('')
+                  }}
+                />
               </div>
 
-              {fields.map((field, index) => (
-                <div key={field.id} className="grid gap-3 rounded-md border p-3 md:grid-cols-12">
-                  <div className="md:col-span-5 space-y-2">
-                    <Label>Product</Label>
-                    {(() => {
-                      const productField = form.register(`items.${index}.product_id`)
-                      return (
-                    <select
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                      {...productField}
-                      onChange={(event) => {
-                        productField.onChange(event)
-                        const selectedProductId = Number(event.target.value)
-                        const selectedProduct = (productsQuery.data?.items ?? []).find((product) => product.id === selectedProductId)
-                        const productPrice = Number(selectedProduct?.sale_price ?? selectedProduct?.price ?? 0)
+              {fields.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Search and select a product to add item box.</p>
+              ) : null}
 
-                        if (Number.isFinite(productPrice) && productPrice > 0) {
-                          form.setValue(`items.${index}.unit_price`, String(productPrice), {
-                            shouldDirty: true,
-                            shouldTouch: true,
-                            shouldValidate: true,
-                          })
-                        }
-                      }}
-                    >
-                      <option value="">Select product</option>
-                      {(productsQuery.data?.items ?? []).map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                        </option>
-                      ))}
-                    </select>
-                      )
-                    })()}
+              {fields.map((field, index) => {
+                const currentProductId = Number(watchedItems[index]?.product_id ?? 0)
+                const meta = Number.isFinite(currentProductId) ? productMetaById[currentProductId] : null
+                const quantity = Number(watchedItems[index]?.quantity ?? 0)
+                const unitPrice = Number(watchedItems[index]?.unit_price ?? 0)
+                const lineTotal = Number.isFinite(quantity) && Number.isFinite(unitPrice) ? quantity * unitPrice : 0
+
+                return (
+                  <div key={field.id} className="space-y-3 rounded-md border p-3">
+                    <input type="hidden" {...form.register(`items.${index}.product_id`)} />
+
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Product Name</Label>
+                        <p className="text-sm font-semibold">
+                          {meta?.name || productNameById[currentProductId] || `Product #${currentProductId}`}
+                        </p>
+                      </div>
+
+                      <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-5">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Sale Price</Label>
+                        <Input type="number" min="0" step="0.01" {...form.register(`items.${index}.unit_price`)} />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Wanted Qty</Label>
+                        <Input type="number" min="1" step="1" {...form.register(`items.${index}.quantity`)} />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Available Qty</Label>
+                        <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm font-semibold">
+                          {meta?.availableQuantity ?? '-'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Purchase Price</Label>
+                        <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm font-semibold">
+                          {meta ? meta.purchasePrice.toFixed(2) : '-'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Total</Label>
+                        <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm font-semibold">
+                          {lineTotal.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
                     {form.formState.errors.items?.[index]?.product_id?.message ? (
                       <p className="text-xs text-destructive">{form.formState.errors.items[index]?.product_id?.message}</p>
                     ) : null}
-                  </div>
-
-                  <div className="md:col-span-2 space-y-2">
-                    <Label>Qty</Label>
-                    <Input type="number" min="1" step="1" {...form.register(`items.${index}.quantity`)} />
                     {form.formState.errors.items?.[index]?.quantity?.message ? (
                       <p className="text-xs text-destructive">{form.formState.errors.items[index]?.quantity?.message}</p>
                     ) : null}
-                  </div>
-
-                  <div className="md:col-span-3 space-y-2">
-                    <Label>Unit Price</Label>
-                    <Input type="number" min="0" step="0.01" {...form.register(`items.${index}.unit_price`)} />
                     {form.formState.errors.items?.[index]?.unit_price?.message ? (
                       <p className="text-xs text-destructive">{form.formState.errors.items[index]?.unit_price?.message}</p>
                     ) : null}
                   </div>
-
-                  <div className="md:col-span-2 flex items-end">
-                    <Button type="button" variant="destructive" size="sm" disabled={fields.length === 1} onClick={() => remove(index)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -357,8 +736,26 @@ export function NewSalePage() {
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" disabled={createMutation.isPending || customersQuery.isLoading || productsQuery.isLoading}>
+              <Button type="submit" disabled={createMutation.isPending || customersQuery.isLoading}>
                 {createMutation.isPending ? 'Saving...' : 'Create Sale'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  const values = form.getValues()
+                  const receipt = lastPrintableReceipt ?? buildDraftReceipt(values)
+
+                  if (!receipt) {
+                    toast.error('Add at least one valid item before printing.')
+                    return
+                  }
+
+                  printReceipt(receipt)
+                }}
+              >
+                <Printer className="h-4 w-4" />
+                Print Receipt
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate('/sales')}>
                 Cancel

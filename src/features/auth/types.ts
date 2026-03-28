@@ -16,6 +16,8 @@ export interface RegisterRequest {
   email: string
   password: string
   password_confirmation: string
+  role?: 'admin' | 'cashier'
+  shop_id?: number | null
 }
 
 export interface ForgotPasswordRequest {
