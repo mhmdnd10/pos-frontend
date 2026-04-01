@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Upload } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -27,6 +27,52 @@ export function ProductsImportPage() {
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to import products.')),
   })
 
+  function downloadCsvTemplate() {
+    const headers = [
+      'name',
+      'barcode',
+      'category_id',
+      'description',
+      'purchase_price',
+      'sale_price',
+      'stock_quantity',
+      'size',
+      'color',
+      'brand',
+      'image',
+      'is_active',
+      'minimum_stock_alert',
+    ]
+
+    const exampleRow = [
+      'T-Shirt Basic',
+      'TS-001',
+      '3',
+      'Cotton t-shirt',
+      '12.5',
+      '20',
+      '50',
+      'M',
+      'Black',
+      'UrbanWear',
+      'https://example.com/tshirt.jpg',
+      '1',
+      '5',
+    ]
+
+    const csvContent = ['\uFEFF' + headers.join(','), exampleRow.join(',')].join('\r\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+
+    anchor.href = url
+    anchor.download = 'products_import_template.csv'
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="max-w-2xl">
       <PageHeader title="Import Products" description="Upload Excel file (.xlsx or .xls) to /api/products/import" />
@@ -43,22 +89,37 @@ export function ProductsImportPage() {
               setFile(selected)
             }}
           />
-          <p className="text-xs text-muted-foreground">Select an Excel file (.xlsx or .xls) before importing.</p>
-          <Button
-            type="button"
-            disabled={importMutation.isPending}
-            onClick={() => {
-              if (!file) {
-                toast.error('Please choose an Excel file first.')
-                return
-              }
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <p>Select an Excel file (.xlsx or .xls) before importing.</p>
+            <p>Columns expected: name (required), barcode, category_id, description, purchase_price, sale_price, stock_quantity, size, color, brand, image, is_active, minimum_stock_alert.</p>
+            <div className="rounded-md border bg-muted/20 p-2">
+              <p className="font-medium text-foreground">Excel demo</p>
+              <p>Row 1 (headers): name | barcode | category_id | description | purchase_price | sale_price | stock_quantity | size | color | brand | image | is_active | minimum_stock_alert</p>
+              <p>Row 2 (example): T-Shirt Basic | TS-001 | 3 | Cotton t-shirt | 12.5 | 20 | 50 | M | Black | UrbanWear | https://example.com/tshirt.jpg | 1 | 5</p>
+            </div>
+            <p>Tip: use the CSV template (UTF-8) to avoid question marks (???), then save as .xlsx/.xls before upload.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={downloadCsvTemplate}>
+              <Download className="h-4 w-4" />
+              Export CSV Template
+            </Button>
+            <Button
+              type="button"
+              disabled={importMutation.isPending}
+              onClick={() => {
+                if (!file) {
+                  toast.error('Please choose an Excel file first.')
+                  return
+                }
 
-              importMutation.mutate(file)
-            }}
-          >
-            <Upload className="h-4 w-4" />
-            {importMutation.isPending ? 'Uploading...' : 'Import'}
-          </Button>
+                importMutation.mutate(file)
+              }}
+            >
+              <Upload className="h-4 w-4" />
+              {importMutation.isPending ? 'Uploading...' : 'Import'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

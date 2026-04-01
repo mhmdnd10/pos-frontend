@@ -13,10 +13,17 @@ export const productService = {
     const search = options.search?.trim()
     const categoryId = options.categoryId
 
-    const endpoint = Number.isFinite(categoryId) ? endpoints.products.byCategory(Number(categoryId)) : endpoints.products.list
+    const hasCategoryFilter = Number.isFinite(categoryId)
+    const shouldUseCategoryEndpoint = hasCategoryFilter && !search
+
+    const endpoint = shouldUseCategoryEndpoint
+      ? endpoints.products.byCategory(Number(categoryId))
+      : endpoints.products.list
+
     const params = {
       page,
-      ...(search ? { search, q: search, keyword: search, name: search } : {}),
+      ...(search ? { search } : {}),
+      ...(!shouldUseCategoryEndpoint && hasCategoryFilter ? { category_id: Number(categoryId) } : {}),
     }
 
     const { data } = await httpClient.get(endpoint, { params })

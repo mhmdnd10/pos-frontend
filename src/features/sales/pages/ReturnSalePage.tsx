@@ -262,11 +262,7 @@ export function ReturnSalePage() {
     const lineWidth = 32
     const divider = '-'.repeat(lineWidth)
 
-    const sanitizeAscii = (value: string) =>
-      value
-        .normalize('NFKD')
-        .replace(/[^\x20-\x7E]/g, '')
-        .trim()
+    const sanitizeText = (value: string) => value.trim()
 
     const formatMoney = (value: number) => value.toFixed(2)
 
@@ -291,7 +287,7 @@ export function ReturnSalePage() {
 
     const itemHeader = `${'Item'.padEnd(14)}${'Qty'.padStart(4)}${'Price'.padStart(7)}${'Total'.padStart(7)}`
     const itemLines = returnLines.map((line) => {
-      const itemName = sanitizeAscii(line.product_name || 'Item')
+      const itemName = sanitizeText(line.product_name || 'Item')
         .slice(0, 14)
         .padEnd(14)
       const qty = String(Math.floor(Number(line.quantity) || 0)).padStart(4)
@@ -313,7 +309,7 @@ export function ReturnSalePage() {
     ]
 
     if (!isWalkinReturn && activeInvoice) {
-      receiptLines.push(`Invoice  : ${sanitizeAscii(activeInvoice)}`)
+      receiptLines.push(`Invoice  : ${sanitizeText(activeInvoice)}`)
     }
 
     receiptLines = [
@@ -348,7 +344,7 @@ export function ReturnSalePage() {
   <style>
     @page { size: 80mm auto; margin: 1.5mm; }
     html, body { margin: 0; padding: 0; color: #111; }
-    body { font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+    body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 12px; }
     .receipt {
       width: 72mm;
       margin: 0 auto;
@@ -357,6 +353,7 @@ export function ReturnSalePage() {
       white-space: pre;
       direction: ltr;
       text-align: ${isWalkinReturn ? 'center' : 'left'};
+      unicode-bidi: plaintext;
     }
   </style>
 </head>

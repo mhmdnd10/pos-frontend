@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { productService } from '@/features/products/services/productService'
 import type { Product } from '@/features/products/types'
+import { buildProductDisplayName } from '@/features/products/utils/productDisplay'
 import { queryKeys } from '@/lib/constants/queryKeys'
 import { cn } from '@/lib/utils/cn'
 
@@ -34,14 +35,19 @@ function getStock(product: Product) {
 }
 
 function getProductLabel(product: Product) {
-  return product.name || `Product #${product.id}`
+  return buildProductDisplayName(product)
+}
+
+function getVariantSummary(product: Product) {
+  const parts = [product.brand, product.color, product.size].filter((value) => typeof value === 'string' && value.trim().length > 0)
+  return parts.length > 0 ? parts.join(' / ') : null
 }
 
 export function ProductSearchSelect({
   value,
   onSelect,
   onClear,
-  placeholder = 'Search product by name, barcode, or SKU',
+  placeholder = 'Search by name, barcode, brand, color, or size',
   className,
 }: ProductSearchSelectProps) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -109,14 +115,26 @@ export function ProductSearchSelect({
   const products = productsQuery.data?.items ?? []
 
   const filteredProducts = useMemo(() => {
-    const term = debouncedSearchTerm.toLowerCase()
+    const term = debouncedSearchTerm.toLowerCase().trim()
+    const tokens = term.split(/\s+/).filter((token) => token.length > 0)
 
     if (term) {
       return products.filter((product) => {
-        const name = product.name?.toLowerCase() ?? ''
-        const barcode = (product.barcode ?? product.sku ?? '').toLowerCase()
-        const categoryName = (product.category_name ?? product.category?.name ?? '').toLowerCase()
-        return name.includes(term) || barcode.includes(term) || categoryName.includes(term)
+        const haystack = [
+          product.name,
+          product.barcode,
+          product.sku,
+          product.category_name,
+          product.category?.name,
+          product.brand,
+          product.color,
+          product.size,
+        ]
+          .filter((value) => typeof value === 'string' && value.trim().length > 0)
+          .join(' ')
+          .toLowerCase()
+
+        return tokens.every((token) => haystack.includes(token))
       })
     }
 
@@ -162,6 +180,7 @@ export function ProductSearchSelect({
             ? filteredProducts.map((product) => {
                 const purchasePrice = Number(product.purchase_price ?? product.cost_price ?? 0)
                 const salePrice = Number(product.sale_price ?? product.price ?? 0)
+                const variantSummary = getVariantSummary(product)
 
                 return (
                   <button
@@ -177,6 +196,7 @@ export function ProductSearchSelect({
                     }}
                   >
                     <span className="text-sm font-medium">{getProductLabel(product)}</span>
+                    {variantSummary ? <span className="text-xs text-muted-foreground">{variantSummary}</span> : null}
                     <span className="text-xs text-muted-foreground">
                       Purchase: {formatPrice(purchasePrice)} | Sale: {formatPrice(salePrice)} | Stock: {getStock(product)}
                     </span>
@@ -189,6 +209,7 @@ export function ProductSearchSelect({
 
       {selectedProduct ? (
         <div className="mt-2 rounded-md border bg-muted/20 px-2 py-2 text-xs text-muted-foreground">
+          {getVariantSummary(selectedProduct) ? `${getVariantSummary(selectedProduct)} | ` : ''}
           Purchase: {formatPrice(selectedProduct.purchase_price ?? selectedProduct.cost_price)} | Sale:{' '}
           {formatPrice(selectedProduct.sale_price ?? selectedProduct.price)} | Stock: {getStock(selectedProduct)}
         </div>

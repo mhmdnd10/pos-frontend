@@ -24,7 +24,10 @@ import { queryKeys } from '@/lib/constants/queryKeys'
 const productSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   barcode: z.string().optional(),
-  category_id: z.string().min(1, 'Category is required'),
+  size: z.string().optional(),
+  color: z.string().optional(),
+  brand: z.string().optional(),
+  category_id: z.string().optional(),
   sale_price: z.string().min(1, 'Sale price is required'),
   purchase_price: z.string().min(1, 'Purchase price is required'),
   stock_quantity: z.string().min(1, 'Stock quantity is required'),
@@ -74,6 +77,9 @@ function toPayload(values: ProductSchema): ProductPayload {
   return {
     name: values.name,
     barcode: values.barcode,
+    size: values.size,
+    color: values.color,
+    brand: values.brand,
     category_id: toOptionalNumber(values.category_id),
     sale_price: toOptionalNumber(values.sale_price),
     purchase_price: toOptionalNumber(values.purchase_price),
@@ -96,12 +102,34 @@ export function ProductsPage() {
 
   const createForm = useForm<ProductSchema>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: '', barcode: '', category_id: '', sale_price: '', purchase_price: '', stock_quantity: '', description: '' },
+    defaultValues: {
+      name: '',
+      barcode: '',
+      size: '',
+      color: '',
+      brand: '',
+      category_id: '',
+      sale_price: '',
+      purchase_price: '',
+      stock_quantity: '',
+      description: '',
+    },
   })
 
   const editForm = useForm<ProductSchema>({
     resolver: zodResolver(productSchema),
-    defaultValues: { name: '', barcode: '', category_id: '', sale_price: '', purchase_price: '', stock_quantity: '', description: '' },
+    defaultValues: {
+      name: '',
+      barcode: '',
+      size: '',
+      color: '',
+      brand: '',
+      category_id: '',
+      sale_price: '',
+      purchase_price: '',
+      stock_quantity: '',
+      description: '',
+    },
   })
 
   const productsQuery = useQuery({
@@ -122,17 +150,20 @@ export function ProductsPage() {
 
   const visibleProducts = useMemo(() => {
     const rows = productsQuery.data?.items ?? []
-    const term = searchTerm.toLowerCase()
+    const term = searchTerm.toLowerCase().trim()
+    const tokens = term.split(/\s+/).filter((token) => token.length > 0)
 
     if (!term) {
       return rows
     }
 
     return rows.filter((row) => {
-      const name = row.name?.toLowerCase() ?? ''
-      const barcode = (row.barcode ?? row.sku ?? '').toLowerCase()
-      const categoryName = (row.category_name ?? row.category?.name ?? '').toLowerCase()
-      return name.includes(term) || barcode.includes(term) || categoryName.includes(term)
+      const haystack = [row.name, row.barcode, row.sku, row.category_name, row.category?.name, row.brand, row.color, row.size]
+        .filter((value) => typeof value === 'string' && value.trim().length > 0)
+        .join(' ')
+        .toLowerCase()
+
+      return tokens.every((token) => haystack.includes(token))
     })
   }, [productsQuery.data?.items, searchTerm])
 
@@ -218,7 +249,7 @@ export function ProductsPage() {
           <Input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search products by name or barcode"
+            placeholder="Search by name, barcode, brand, color, or size"
           />
         </div>
         <div>
@@ -268,6 +299,9 @@ export function ProductsPage() {
               },
               { key: 'name', header: 'Name' },
               { key: 'barcode', header: 'Barcode', render: (row) => String(row.barcode ?? row.sku ?? '-') },
+              { key: 'brand', header: 'Brand', render: (row) => String(row.brand ?? '-') },
+              { key: 'color', header: 'Color', render: (row) => String(row.color ?? '-') },
+              { key: 'size', header: 'Size', render: (row) => String(row.size ?? '-') },
               {
                 key: 'category_id',
                 header: 'Category',
@@ -314,6 +348,9 @@ export function ProductsPage() {
                         editForm.reset({
                           name: row.name,
                           barcode: String(row.barcode ?? row.sku ?? ''),
+                          size: String(row.size ?? ''),
+                          color: String(row.color ?? ''),
+                          brand: String(row.brand ?? ''),
                           category_id: row.category_id ? String(row.category_id) : '',
                           sale_price: String(row.sale_price ?? row.price ?? ''),
                           purchase_price: String(row.purchase_price ?? row.cost_price ?? ''),
@@ -372,6 +409,9 @@ export function ProductsPage() {
             >
               <FormField form={createForm} name="name" label="Name" placeholder="Product name" />
               <FormField form={createForm} name="barcode" label="Barcode" placeholder="Barcode" />
+              <FormField form={createForm} name="brand" label="Brand" placeholder="Brand" />
+              <FormField form={createForm} name="color" label="Color" placeholder="Color" />
+              <FormField form={createForm} name="size" label="Size" placeholder="Size" />
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="create_category_id">Category</label>
                 <select
@@ -420,6 +460,9 @@ export function ProductsPage() {
             >
               <FormField form={editForm} name="name" label="Name" placeholder="Product name" />
               <FormField form={editForm} name="barcode" label="Barcode" placeholder="Barcode" />
+              <FormField form={editForm} name="brand" label="Brand" placeholder="Brand" />
+              <FormField form={editForm} name="color" label="Color" placeholder="Color" />
+              <FormField form={editForm} name="size" label="Size" placeholder="Size" />
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="edit_category_id">Category</label>
                 <select

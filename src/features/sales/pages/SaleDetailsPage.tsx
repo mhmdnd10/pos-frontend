@@ -4,6 +4,7 @@ import { RecordDetails } from '@/components/shared/details/RecordDetails'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { customerService } from '@/features/customers/services/customerService'
 import { productService } from '@/features/products/services/productService'
+import { buildProductDisplayName } from '@/features/products/utils/productDisplay'
 import { saleService } from '@/features/sales/services/saleService'
 import { queryKeys } from '@/lib/constants/queryKeys'
 import { formatDisplayAmount, formatDisplayDate, getPartyDisplayName } from '@/lib/utils/recordDisplay'
@@ -29,7 +30,7 @@ export function SaleDetailsPage() {
   })
 
   const customersById = new Map((customersQuery.data?.items ?? []).map((customer) => [customer.id, customer.name]))
-  const productsById = new Map((productsQuery.data?.items ?? []).map((product) => [product.id, product.name]))
+  const productsById = new Map((productsQuery.data?.items ?? []).map((product) => [product.id, buildProductDisplayName(product)]))
 
   function resolveInvoiceNumber(source: Record<string, unknown>) {
     const invoiceCandidate = source.invoice_number
@@ -64,15 +65,20 @@ export function SaleDetailsPage() {
             .map((item) => {
               const productId = Number(item.product_id)
               const relationProduct = item.product
-              const relationProductName =
+              const relationProductLabel =
                 relationProduct && typeof relationProduct === 'object' && !Array.isArray(relationProduct)
-                  ? (relationProduct as Record<string, unknown>).name
-                  : null
+                  ? buildProductDisplayName({
+                      id: productId,
+                      name: (relationProduct as Record<string, unknown>).name as string | null | undefined,
+                      brand: (relationProduct as Record<string, unknown>).brand as string | null | undefined,
+                      color: (relationProduct as Record<string, unknown>).color as string | null | undefined,
+                    })
+                  : ''
 
               return {
                 product:
-                  typeof relationProductName === 'string' && relationProductName.trim().length > 0
-                    ? relationProductName.trim()
+                  relationProductLabel.trim().length > 0
+                    ? relationProductLabel
                     : Number.isFinite(productId)
                       ? productsById.get(productId) ?? `Product #${productId}`
                       : '-',

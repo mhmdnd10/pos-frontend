@@ -14,6 +14,7 @@ import { Input } from '@/components/shared/ui/input'
 import { Label } from '@/components/shared/ui/label'
 import { Textarea } from '@/components/shared/ui/textarea'
 import { customerService } from '@/features/customers/services/customerService'
+import { buildProductDisplayName } from '@/features/products/utils/productDisplay'
 import { saleService } from '@/features/sales/services/saleService'
 import { getStoredUser } from '@/lib/api/session'
 import { getApiErrorMessage } from '@/lib/api/response'
@@ -116,11 +117,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
   const lineWidth = 32
   const divider = '-'.repeat(lineWidth)
 
-  const sanitizeAscii = (value: string) =>
-    value
-      .normalize('NFKD')
-      .replace(/[^\x20-\x7E]/g, '')
-      .trim()
+  const sanitizeText = (value: string) => value.trim()
 
   const trimText = (value: string, maxLength: number) => {
     if (value.length <= maxLength) {
@@ -151,12 +148,12 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
 
   const customerNameRaw =
     receipt.customerName && receipt.customerName !== 'Walk-in Customer' ? receipt.customerName : 'Walk-in Customer'
-  const customerName = trimText(sanitizeAscii(customerNameRaw) || 'Walk-in Customer', lineWidth - 10)
-  const customerPhone = sanitizeAscii(receipt.customerPhone?.trim() || '-') || '-'
+  const customerName = trimText(sanitizeText(customerNameRaw) || 'Walk-in Customer', lineWidth - 10)
+  const customerPhone = sanitizeText(receipt.customerPhone?.trim() || '-') || '-'
 
   const itemHeader = `${'Item'.padEnd(14)}${'Qty'.padStart(4)}${'Price'.padStart(7)}${'Total'.padStart(7)}`
   const itemLines = receipt.items.map((item) => {
-    const itemName = trimText(sanitizeAscii(item.name) || 'Item', 14).padEnd(14)
+    const itemName = trimText(sanitizeText(item.name) || 'Item', 14).padEnd(14)
     const qty = String(item.quantity).padStart(4)
     const price = formatMoney(item.unitPrice).padStart(7)
     const total = formatMoney(item.lineTotal).padStart(7)
@@ -171,7 +168,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
     `Customer: ${customerName}`,
     `Phone   : ${customerPhone}`,
     divider,
-    `Invoice : ${sanitizeAscii(receipt.invoiceNumber) || 'N/A'}`,
+    `Invoice : ${sanitizeText(receipt.invoiceNumber) || 'N/A'}`,
     `Date    : ${receiptDate}   ${receiptTime}`,
     divider,
     itemHeader,
@@ -203,7 +200,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
         <style>
           @page { size: 80mm auto; margin: 1.5mm; }
           html, body { margin: 0; padding: 0; color: #111; }
-          body { font-family: 'Courier New', Courier, monospace; font-size: 12px; }
+          body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 12px; }
           .receipt {
             width: 72mm;
             margin: 0 auto;
@@ -212,6 +209,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             white-space: pre;
             direction: ltr;
             text-align: left;
+            unicode-bidi: plaintext;
           }
         </style>
       </head>
@@ -620,13 +618,13 @@ export function NewSalePage() {
 
                     setProductNameById((previous) => ({
                       ...previous,
-                      [productId]: product.name || `Product #${productId}`,
+                      [productId]: buildProductDisplayName(product),
                     }))
 
                     setProductMetaById((previous) => ({
                       ...previous,
                       [productId]: {
-                        name: product.name || `Product #${productId}`,
+                        name: buildProductDisplayName(product),
                         salePrice: Number.isFinite(salePrice) && salePrice >= 0 ? salePrice : 0,
                         purchasePrice: Number.isFinite(purchasePrice) && purchasePrice >= 0 ? purchasePrice : 0,
                         availableQuantity: Number.isFinite(availableQuantity) ? availableQuantity : 0,

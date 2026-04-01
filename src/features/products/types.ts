@@ -2,6 +2,9 @@ export interface Product {
   id: number
   name: string
   barcode?: string | null
+  size?: string | null
+  color?: string | null
+  brand?: string | null
   category_name?: string | null
   category?: {
     id?: number
@@ -26,6 +29,9 @@ export interface Product {
 export interface ProductPayload {
   name: string
   barcode?: string
+  size?: string
+  color?: string
+  brand?: string
   category_id?: number
   sale_price?: number
   purchase_price?: number

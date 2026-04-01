@@ -14,9 +14,15 @@ import { formatDisplayAmount, formatDisplayDate, getPartyDisplayName } from '@/l
 
 export function SalesPage() {
   const [page, setPage] = useState(1)
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const salesQuery = useQuery({
-    queryKey: [...queryKeys.sales.all, page],
-    queryFn: () => saleService.list(page),
+    queryKey: [...queryKeys.sales.all, page, fromDate, toDate],
+    queryFn: () =>
+      saleService.list(page, {
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      }),
   })
 
   const customersQuery = useQuery({
@@ -56,6 +62,49 @@ export function SalesPage() {
 
       {salesQuery.isLoading ? <div className="rounded-md border p-6 text-sm text-muted-foreground">Loading sales...</div> : null}
       {salesQuery.isError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">Failed to load sales.</div> : null}
+
+      <div className="mb-4 grid gap-3 md:grid-cols-4">
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground" htmlFor="sales_from_date">From</label>
+          <input
+            id="sales_from_date"
+            type="date"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={fromDate}
+            onChange={(event) => {
+              setFromDate(event.target.value)
+              setPage(1)
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs text-muted-foreground" htmlFor="sales_to_date">To</label>
+          <input
+            id="sales_to_date"
+            type="date"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={toDate}
+            onChange={(event) => {
+              setToDate(event.target.value)
+              setPage(1)
+            }}
+          />
+        </div>
+        <div className="flex items-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              setFromDate('')
+              setToDate('')
+              setPage(1)
+            }}
+          >
+            Reset Filters
+          </Button>
+        </div>
+      </div>
 
       {salesQuery.data ? (
         <>

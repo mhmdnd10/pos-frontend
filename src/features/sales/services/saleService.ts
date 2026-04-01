@@ -3,6 +3,11 @@ import { normalizeItemResponse, normalizeListResponse } from '@/lib/api/response
 import { endpoints } from '@/lib/constants/endpoints'
 import type { Sale } from '@/features/sales/types'
 
+interface SaleListFilters {
+  from?: string
+  to?: string
+}
+
 function readInvoiceCandidate(source: Record<string, unknown>) {
   const value =
     source.invoice_number ??
@@ -31,8 +36,14 @@ function matchesInvoice(source: Record<string, unknown>, invoiceNumber: string) 
 }
 
 export const saleService = {
-  async list(page = 1) {
-    const { data } = await httpClient.get(endpoints.sales.list, { params: { page } })
+  async list(page = 1, filters: SaleListFilters = {}) {
+    const { data } = await httpClient.get(endpoints.sales.list, {
+      params: {
+        page,
+        ...(filters.from ? { from: filters.from } : {}),
+        ...(filters.to ? { to: filters.to } : {}),
+      },
+    })
     return normalizeListResponse<Sale>(data)
   },
 

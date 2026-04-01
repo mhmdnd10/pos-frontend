@@ -3,9 +3,20 @@ import { normalizeItemResponse, normalizeListResponse } from '@/lib/api/response
 import { endpoints } from '@/lib/constants/endpoints'
 import type { Purchase } from '@/features/purchases/types'
 
+interface PurchaseListFilters {
+  from?: string
+  to?: string
+}
+
 export const purchaseService = {
-  async list(page = 1) {
-    const { data } = await httpClient.get(endpoints.purchases.list, { params: { page } })
+  async list(page = 1, filters: PurchaseListFilters = {}) {
+    const { data } = await httpClient.get(endpoints.purchases.list, {
+      params: {
+        page,
+        ...(filters.from ? { from: filters.from } : {}),
+        ...(filters.to ? { to: filters.to } : {}),
+      },
+    })
     return normalizeListResponse<Purchase>(data)
   },
 
