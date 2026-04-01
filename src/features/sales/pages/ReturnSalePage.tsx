@@ -265,6 +265,7 @@ export function ReturnSalePage() {
     const sanitizeText = (value: string) => value.trim()
 
     const formatMoney = (value: number) => value.toFixed(2)
+    const formatKeyValue = (key: string, value: string) => `${key.padEnd(12)}: ${value}`
 
     const receiptDate = (() => {
       const [year, month, day] = saleDate.split('-')
@@ -283,17 +284,34 @@ export function ReturnSalePage() {
     })()
 
     const isWalkinReturn = mode === 'without-invoice'
-    const returnType = isWalkinReturn ? 'QUICK RETURN' : 'RETURN/INVOICE UPDATE'
+    const returnType = isWalkinReturn ? 'QUICK RETURN' : 'RETURN / INVOICE UPDATE'
 
-    const itemHeader = `${'Item'.padEnd(14)}${'Qty'.padStart(4)}${'Price'.padStart(7)}${'Total'.padStart(7)}`
-    const itemLines = returnLines.map((line) => {
-      const itemName = sanitizeText(line.product_name || 'Item')
-        .slice(0, 14)
-        .padEnd(14)
-      const qty = String(Math.floor(Number(line.quantity) || 0)).padStart(4)
-      const price = formatMoney(Number(line.unit_price || 0)).padStart(7)
-      const lineTotal = formatMoney(Number(line.quantity || 0) * Number(line.unit_price || 0)).padStart(7)
-      return `${itemName}${qty}${price}${lineTotal}`
+    const itemHeader = `${'العرض'.padEnd(11)} ${'الكمية'.padEnd(4)} ${'السعر'.padEnd(7)} ${'المجموع'.padEnd(7)}`
+    const itemLines: string[] = []
+    returnLines.forEach((line) => {
+      const fullName = sanitizeText(line.product_name || '-')
+      const words = fullName.split(' ')
+      const itemNameLines: string[] = []
+      let currentLine = ''
+      
+      for (const word of words) {
+        if ((currentLine + ' ' + word).trim().length <= 11) {
+          currentLine = (currentLine + ' ' + word).trim()
+        } else {
+          if (currentLine) itemNameLines.push(currentLine)
+          currentLine = word.length <= 11 ? word : word.substring(0, 11)
+        }
+      }
+      if (currentLine) itemNameLines.push(currentLine)
+      
+      const qty = String(Math.floor(Number(line.quantity) || 0))
+      const price = formatMoney(Number(line.unit_price || 0))
+      const lineTotal = formatMoney(Number(line.quantity || 0) * Number(line.unit_price || 0))
+
+      itemLines.push(`${itemNameLines[0].padEnd(11)} ${qty.padEnd(4)} ${price.padStart(7)} ${lineTotal.padStart(7)}`)
+      for (let i = 1; i < itemNameLines.length; i++) {
+        itemLines.push(itemNameLines[i].padEnd(11))
+      }
     })
 
     const displayTotal = isWalkinReturn ? -total : total
@@ -309,20 +327,22 @@ export function ReturnSalePage() {
     ]
 
     if (!isWalkinReturn && activeInvoice) {
-      receiptLines.push(`Invoice  : ${sanitizeText(activeInvoice)}`)
+      receiptLines.push(formatKeyValue('Invoice', sanitizeText(activeInvoice)))
     }
 
     receiptLines = [
       ...receiptLines,
-      `Date     : ${receiptDate}   ${receiptTime}`,
+      formatKeyValue('Date', receiptDate),
+      formatKeyValue('Time', receiptTime),
       divider,
       itemHeader,
       ...itemLines,
       divider,
-      `Total    : ${formatMoney(displayTotal).padStart(20)}`,
-      `Paid     : ${formatMoney(displayPaid).padStart(20)}`,
-      `Remaining: ${formatMoney(displayRemaining).padStart(20)}`,
+      formatKeyValue('Total Amount', formatMoney(displayTotal)),
+      formatKeyValue('Paid Amount', formatMoney(displayPaid)),
+      formatKeyValue('Remaining', formatMoney(displayRemaining)),
       divider,
+      'Thank you for your purchase',
       '',
       '',
       '',
@@ -351,8 +371,8 @@ export function ReturnSalePage() {
       padding: 0.5mm 1mm 0 1mm;
       line-height: 1.25;
       white-space: pre;
+      text-align: left;
       direction: ltr;
-      text-align: ${isWalkinReturn ? 'center' : 'left'};
       unicode-bidi: plaintext;
     }
   </style>

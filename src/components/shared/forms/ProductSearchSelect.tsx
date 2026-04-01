@@ -190,7 +190,7 @@ export function ProductSearchSelect({
                     onMouseDown={(event) => {
                       event.preventDefault()
                       setSelectedProduct(product)
-                      setSearchTerm(getProductLabel(product))
+                      setSearchTerm('')
                       setIsOpen(false)
                       onSelect(product)
                     }}

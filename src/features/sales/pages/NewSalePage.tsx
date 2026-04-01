@@ -119,15 +119,26 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
 
   const sanitizeText = (value: string) => value.trim()
 
-  const trimText = (value: string, maxLength: number) => {
-    if (value.length <= maxLength) {
-      return value
+  const wrapText = (value: string, maxLength: number): string[] => {
+    const words = value.split(' ')
+    const lines: string[] = []
+    let currentLine = ''
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).trim().length <= maxLength) {
+        currentLine = (currentLine + ' ' + word).trim()
+      } else {
+        if (currentLine) lines.push(currentLine)
+        currentLine = word.length <= maxLength ? word : word.substring(0, maxLength)
+      }
     }
 
-    return `${value.slice(0, Math.max(maxLength - 3, 1))}...`
+    if (currentLine) lines.push(currentLine)
+    return lines.length > 0 ? lines : ['Item']
   }
 
   const formatMoney = (value: number) => value.toFixed(2)
+  const formatKeyValue = (key: string, value: string) => `${key.padEnd(12)}: ${value}`
 
   const receiptDate = (() => {
     const [year, month, day] = receipt.saleDate.split('-')
@@ -148,36 +159,47 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
 
   const customerNameRaw =
     receipt.customerName && receipt.customerName !== 'Walk-in Customer' ? receipt.customerName : 'Walk-in Customer'
-  const customerName = trimText(sanitizeText(customerNameRaw) || 'Walk-in Customer', lineWidth - 10)
+  const customerName = (sanitizeText(customerNameRaw) || 'Walk-in Customer').slice(0, lineWidth - 10).padEnd(lineWidth - 10)
   const customerPhone = sanitizeText(receipt.customerPhone?.trim() || '-') || '-'
 
-  const itemHeader = `${'Item'.padEnd(14)}${'Qty'.padStart(4)}${'Price'.padStart(7)}${'Total'.padStart(7)}`
-  const itemLines = receipt.items.map((item) => {
-    const itemName = trimText(sanitizeText(item.name) || 'Item', 14).padEnd(14)
-    const qty = String(item.quantity).padStart(4)
-    const price = formatMoney(item.unitPrice).padStart(7)
-    const total = formatMoney(item.lineTotal).padStart(7)
-    return `${itemName}${qty}${price}${total}`
+  const itemHeader = `${'العرض'.padEnd(11)} ${'الكمية'.padEnd(4)} ${'السعر'.padEnd(7)} ${'المجموع'.padEnd(7)}`
+  const itemLines: string[] = []
+  receipt.items.forEach((item) => {
+    const itemNameLines = wrapText(sanitizeText(item.name) || '-', 11)
+    const qty = String(item.quantity)
+    const price = formatMoney(item.unitPrice)
+    const total = formatMoney(item.lineTotal)
+    
+    itemNameLines.forEach((line, index) => {
+      if (index === 0) {
+        itemLines.push(`${line.padEnd(11)} ${qty.padStart(4)} ${price.padStart(7)} ${total.padStart(7)}`)
+      } else {
+        itemLines.push(line.padEnd(32))
+      }    })
+
   })
 
   const receiptLines = [
     'HOME DECORATION',
     'AL QMATIYEH',
-    '03109497 | 03909497',
+     'kmatieh-main street',
+     '03109497 | 03909497',
     divider,
-    `Customer: ${customerName}`,
-    `Phone   : ${customerPhone}`,
+    formatKeyValue('Customer', customerName.trim()),
+    formatKeyValue('Phone', customerPhone),
     divider,
-    `Invoice : ${sanitizeText(receipt.invoiceNumber) || 'N/A'}`,
-    `Date    : ${receiptDate}   ${receiptTime}`,
+    formatKeyValue('Invoice', sanitizeText(receipt.invoiceNumber) || 'Pending (save sale first)'),
+    formatKeyValue('Date', receiptDate),
+    formatKeyValue('Time', receiptTime),
     divider,
     itemHeader,
     ...itemLines,
     divider,
-    `Total    : ${formatMoney(receipt.total).padStart(20)}`,
-    `Paid     : ${formatMoney(receipt.paid).padStart(20)}`,
-    `Remaining: ${formatMoney(receipt.remaining).padStart(20)}`,
+    formatKeyValue('Total Amount', formatMoney(receipt.total)),
+    formatKeyValue('Paid Amount', formatMoney(receipt.paid)),
+    formatKeyValue('Remaining', formatMoney(receipt.remaining)),
     divider,
+    'Thank you for your purchase',
     '',
     '',
     '',
@@ -207,8 +229,8 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             padding: 0.5mm 1mm 0 1mm;
             line-height: 1.25;
             white-space: pre;
-            direction: ltr;
             text-align: left;
+            direction: ltr;
             unicode-bidi: plaintext;
           }
         </style>
