@@ -48,4 +48,8 @@ export const endpoints = {
     list: '/api/supplier-payments',
     byId: (id: string | number) => `/api/supplier-payments/${id}`,
   },
+  reports: {
+    dailySummary: '/api/reports/daily-summary',
+    monthlySummary: '/api/reports/monthly-summary',
+  },
 } as const
