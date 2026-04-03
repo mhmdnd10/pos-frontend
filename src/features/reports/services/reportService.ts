@@ -10,6 +10,13 @@ export const reportService = {
     return normalizeItemResponse<DailySummaryReport>(data)
   },
 
+  async getDailySummary(businessDate: string) {
+    const { data } = await httpClient.get(endpoints.reports.dailySummary, {
+      params: { business_date: businessDate },
+    })
+    return normalizeItemResponse<DailySummaryReport>(data)
+  },
+
   async getMonthlySummary(month: string) {
     const { data } = await httpClient.get(endpoints.reports.monthlySummary, {
       params: { month },

@@ -430,9 +430,17 @@ export function ProductsPage() {
                   <p className="text-xs text-destructive">{createForm.formState.errors.category_id.message}</p>
                 ) : null}
               </div>
-              <FormField form={createForm} name="sale_price" label="Sale Price" placeholder="0" />
-              <FormField form={createForm} name="purchase_price" label="Purchase Price" placeholder="0" />
-              <FormField form={createForm} name="stock_quantity" label="Stock Quantity" placeholder="0" />
+              <FormField form={createForm} name="sale_price" label="Sale Price" type="number" min="0" step="0.01" placeholder="0" />
+              <FormField
+                form={createForm}
+                name="purchase_price"
+                label="Purchase Price"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+              <FormField form={createForm} name="stock_quantity" label="Stock Quantity" type="number" min="0" step="0.01" placeholder="0" />
               <div className="md:col-span-2">
                 <FormField form={createForm} name="description" label="Description" placeholder="Optional description" />
               </div>
@@ -481,9 +489,17 @@ export function ProductsPage() {
                   <p className="text-xs text-destructive">{editForm.formState.errors.category_id.message}</p>
                 ) : null}
               </div>
-              <FormField form={editForm} name="sale_price" label="Sale Price" placeholder="0" />
-              <FormField form={editForm} name="purchase_price" label="Purchase Price" placeholder="0" />
-              <FormField form={editForm} name="stock_quantity" label="Stock Quantity" placeholder="0" />
+              <FormField form={editForm} name="sale_price" label="Sale Price" type="number" min="0" step="0.01" placeholder="0" />
+              <FormField
+                form={editForm}
+                name="purchase_price"
+                label="Purchase Price"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+              <FormField form={editForm} name="stock_quantity" label="Stock Quantity" type="number" min="0" step="0.01" placeholder="0" />
               <div className="md:col-span-2">
                 <FormField form={editForm} name="description" label="Description" placeholder="Optional description" />
               </div>

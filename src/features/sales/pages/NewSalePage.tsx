@@ -90,7 +90,7 @@ function toPositiveNumber(value: string) {
 
 function toPositiveInteger(value: string) {
   const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function toNonNegativeNumber(value?: string) {
@@ -222,12 +222,12 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
         <style>
           @page { size: 80mm auto; margin: 1.5mm; }
           html, body { margin: 0; padding: 0; color: #111; }
-          body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 12px; }
+          body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; }
           .receipt {
             width: 72mm;
             margin: 0 auto;
             padding: 0.5mm 1mm 0 1mm;
-            line-height: 1.25;
+            line-height: 1.35;
             white-space: pre;
             text-align: left;
             direction: ltr;
@@ -694,7 +694,7 @@ export function NewSalePage() {
 
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Wanted Qty</Label>
-                        <Input type="number" min="1" step="1" {...form.register(`items.${index}.quantity`)} />
+                        <Input type="number" min="0.01" step="0.01" {...form.register(`items.${index}.quantity`)} />
                       </div>
 
                       <div className="space-y-1">

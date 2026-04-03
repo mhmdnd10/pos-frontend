@@ -41,7 +41,7 @@ function toPositiveNumber(value: string) {
 
 function toPositiveInteger(value: string) {
   const parsed = Number(value)
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
 function toNonNegativeNumber(value?: string) {
@@ -254,7 +254,7 @@ export function NewPurchasePage() {
 
                   <div className="md:col-span-2 space-y-2">
                     <Label>Qty</Label>
-                    <Input type="number" min="1" step="1" {...form.register(`items.${index}.quantity`)} />
+                    <Input type="number" min="0.01" step="0.01" {...form.register(`items.${index}.quantity`)} />
                     {form.formState.errors.items?.[index]?.quantity?.message ? (
                       <p className="text-xs text-destructive">{form.formState.errors.items[index]?.quantity?.message}</p>
                     ) : null}
