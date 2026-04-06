@@ -22,6 +22,7 @@ import { ProductsPage } from '@/features/products/pages/ProductsPage'
 import { NewPurchasePage } from '@/features/purchases/pages/NewPurchasePage'
 import { PurchaseDetailsPage } from '@/features/purchases/pages/PurchaseDetailsPage'
 import { PurchasesPage } from '@/features/purchases/pages/PurchasesPage'
+import { ArchivesPage } from '@/features/reports/pages/ArchivesPage'
 import { NewSalePage } from '@/features/sales/pages/NewSalePage'
 import { ReturnSalePage } from '@/features/sales/pages/ReturnSalePage'
 import { SaleDetailsPage } from '@/features/sales/pages/SaleDetailsPage'
@@ -127,6 +128,10 @@ const router = createBrowserRouter([
           {
             path: routePaths.reports,
             element: <ReportsPage />,
+          },
+          {
+            path: routePaths.archives,
+            element: <ArchivesPage />,
           },
           {
             path: routePaths.salesNew,

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { RecordDetails } from '@/components/shared/details/RecordDetails'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -29,6 +30,53 @@ export function SaleDetailsPage() {
     queryFn: () => productService.list(1),
   })
 
+  const rawItems = useMemo(() => {
+    const source = (detailQuery.data ?? {}) as Record<string, unknown>
+
+    if (Array.isArray(source.items)) {
+      return source.items
+    }
+
+    if (Array.isArray(source.saleItems)) {
+      return source.saleItems
+    }
+
+    if (Array.isArray(source.sale_items)) {
+      return source.sale_items
+    }
+
+    return []
+  }, [detailQuery.data])
+
+  const itemProductIds = useMemo(() => {
+    const ids = rawItems
+      .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+      .map((item) => Number(item.product_id))
+      .filter((productId) => Number.isFinite(productId) && productId > 0)
+
+    return Array.from(new Set(ids))
+  }, [rawItems])
+
+  const itemProductsQuery = useQuery({
+    queryKey: [...queryKeys.products.all, 'sale-details-product-by-id', itemProductIds.join(',')],
+    enabled: itemProductIds.length > 0,
+    queryFn: async () => {
+      const result: Record<number, string> = {}
+      const responses = await Promise.allSettled(itemProductIds.map((productId) => productService.getById(productId)))
+
+      responses.forEach((response, index) => {
+        if (response.status !== 'fulfilled') {
+          return
+        }
+
+        const productId = itemProductIds[index]
+        result[productId] = buildProductDisplayName(response.value)
+      })
+
+      return result
+    },
+  })
+
   const customersById = new Map((customersQuery.data?.items ?? []).map((customer) => [customer.id, customer.name]))
   const productsById = new Map((productsQuery.data?.items ?? []).map((product) => [product.id, buildProductDisplayName(product)]))
 
@@ -52,13 +100,7 @@ export function SaleDetailsPage() {
           const source = detailQuery.data as Record<string, unknown>
           const customerId = Number(source.customer_id)
           const mappedCustomerName = Number.isFinite(customerId) ? customersById.get(customerId) : null
-          const rawItems = Array.isArray(source.items)
-            ? source.items
-            : Array.isArray(source.saleItems)
-              ? source.saleItems
-              : Array.isArray(source.sale_items)
-                ? source.sale_items
-              : []
+          const productNamesById = itemProductsQuery.data ?? {}
 
           const normalizedItems = rawItems
             .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
@@ -72,15 +114,25 @@ export function SaleDetailsPage() {
                       name: (relationProduct as Record<string, unknown>).name as string | null | undefined,
                       brand: (relationProduct as Record<string, unknown>).brand as string | null | undefined,
                       color: (relationProduct as Record<string, unknown>).color as string | null | undefined,
+                      size: (relationProduct as Record<string, unknown>).size as string | null | undefined,
                     })
                   : ''
+
+              const rawProductName =
+                typeof item.product_name === 'string' && item.product_name.trim().length > 0
+                  ? item.product_name.trim()
+                  : typeof item.name === 'string' && item.name.trim().length > 0
+                    ? item.name.trim()
+                    : ''
 
               return {
                 product:
                   relationProductLabel.trim().length > 0
                     ? relationProductLabel
+                    : rawProductName.length > 0
+                      ? rawProductName
                     : Number.isFinite(productId)
-                      ? productsById.get(productId) ?? `Product #${productId}`
+                      ? productNamesById[productId] ?? productsById.get(productId) ?? `Product #${productId}`
                       : '-',
                 quantity: item.quantity,
                 unit_price: item.unit_price,

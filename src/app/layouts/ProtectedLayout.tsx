@@ -14,6 +14,7 @@ const navItems = [
   { label: 'Purchases', to: routePaths.purchases },
   { label: 'Sales', to: routePaths.sales },
   { label: 'Reports', to: routePaths.reports },
+  { label: 'Archives', to: routePaths.archives },
   { label: 'Customer Payments', to: routePaths.customerPayments },
   { label: 'Supplier Payments', to: routePaths.supplierPayments },
 ]

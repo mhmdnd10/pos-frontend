@@ -52,4 +52,5 @@ export const endpoints = {
     dailySummary: '/api/reports/daily-summary',
     monthlySummary: '/api/reports/monthly-summary',
   },
+  archives: '/api/archives',
 } as const

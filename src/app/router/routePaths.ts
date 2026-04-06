@@ -17,6 +17,7 @@ export const routePaths = {
   salesNew: '/sales/new',
   salesReturns: '/sales/returns',
   reports: '/reports',
+  archives: '/archives',
   customerPayments: '/customer-payments',
   customerPaymentsNew: '/customer-payments/new',
   supplierPayments: '/supplier-payments',

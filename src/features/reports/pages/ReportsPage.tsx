@@ -1,14 +1,18 @@
 import { useMutation } from '@tanstack/react-query'
-import { BarChart3, CalendarClock, FileSpreadsheet, Printer, Search } from 'lucide-react'
+import { Archive, BarChart3, CalendarClock, FileSpreadsheet, Printer, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { toast } from 'sonner'
+import { routePaths } from '@/app/router/routePaths'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/shared/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shared/ui/card'
 import { Input } from '@/components/shared/ui/input'
 import { Label } from '@/components/shared/ui/label'
+import { archiveService } from '@/features/reports/services/archiveService'
 import { reportService } from '@/features/reports/services/reportService'
-import type { DailySummaryReport, MonthlySummaryReport } from '@/features/reports/types'
+import type { ArchiveSummary, DailySummaryReport, MonthlySummaryReport } from '@/features/reports/types'
 import { getApiErrorMessage } from '@/lib/api/response'
 
 function toNumber(value: number | string | undefined) {
@@ -131,11 +135,21 @@ function currentDateValue() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function getFriendlyErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  return getApiErrorMessage(error, fallback)
+}
+
 export function ReportsPage() {
   const [businessDate, setBusinessDate] = useState(currentDateValue)
   const [month, setMonth] = useState(currentMonthValue)
   const [dailySummary, setDailySummary] = useState<DailySummaryReport | null>(null)
   const [monthlyReport, setMonthlyReport] = useState<MonthlySummaryReport | null>(null)
+  const [archiveResult, setArchiveResult] = useState<ArchiveSummary | null>(null)
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false)
   const [isAutoLoading, setIsAutoLoading] = useState(true)
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null)
 
@@ -172,6 +186,27 @@ export function ReportsPage() {
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error, 'Failed to fetch monthly report.'))
+    },
+  })
+
+  const archiveMutation = useMutation({
+    mutationFn: async (selectedMonth: string) => {
+      const archiveResponse = await archiveService.archiveClosedMonth(selectedMonth)
+
+      if (archiveResponse.status !== 'success') {
+        throw new Error(archiveResponse.error || 'Failed to archive the selected month.')
+      }
+
+      return archiveResponse
+    },
+    onSuccess: (data) => {
+      setArchiveResult(data)
+      setIsArchiveConfirmOpen(false)
+      setLastRefreshedAt(new Date().toLocaleString())
+      toast.success(`Archived ${data.month} successfully.`)
+    },
+    onError: (error) => {
+      toast.error(getFriendlyErrorMessage(error, 'Failed to archive the selected month.'))
     },
   })
 
@@ -253,6 +288,15 @@ export function ReportsPage() {
     dailyFetchMutation.mutate(businessDate)
   }
 
+  function handleArchiveMonth() {
+    if (!month) {
+      toast.error('Please choose a month first.')
+      return
+    }
+
+    archiveMutation.mutate(month)
+  }
+
   function handlePrintReport() {
     if (!dailySummary && !monthlyReport) {
       toast.error('Generate or fetch a report before printing.')
@@ -278,10 +322,18 @@ export function ReportsPage() {
         title="Reports"
         description="Saved daily and monthly summaries auto-load when this page opens."
         actions={
-          <Button type="button" variant="outline" onClick={handlePrintReport}>
-            <Printer className="h-4 w-4" />
-            Print Report
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild type="button" variant="outline">
+              <Link to={routePaths.archives}>
+                <Archive className="h-4 w-4" />
+                Open Archives
+              </Link>
+            </Button>
+            <Button type="button" variant="outline" onClick={handlePrintReport}>
+              <Printer className="h-4 w-4" />
+              Print Report
+            </Button>
+          </div>
         }
       />
 
@@ -369,10 +421,34 @@ export function ReportsPage() {
                 />
               </div>
 
-              <Button type="submit" disabled={monthlyMutation.isPending || isAutoLoading}>
-                <BarChart3 className="h-4 w-4" />
-                {monthlyMutation.isPending ? 'Fetching...' : 'Fetch Monthly Report'}
-              </Button>
+              <div className="space-y-3">
+                <Button type="submit" disabled={monthlyMutation.isPending || archiveMutation.isPending || isAutoLoading}>
+                  <BarChart3 className="h-4 w-4" />
+                  {monthlyMutation.isPending ? 'Fetching...' : 'Fetch Monthly Report'}
+                </Button>
+
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-destructive">Archive closed month</p>
+                      <p className="text-sm text-muted-foreground">
+                        Moves the active records for {month || 'the selected month'} into archive tables.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setIsArchiveConfirmOpen(true)}
+                      disabled={monthlyMutation.isPending || archiveMutation.isPending || isAutoLoading}
+                      className="sm:min-w-36 text-white"
+                    >
+                      <Archive className="h-4 w-4" />
+                      {archiveMutation.isPending ? 'Archiving...' : 'Archive Month'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </form>
 
             {monthlyReport ? (
@@ -389,10 +465,32 @@ export function ReportsPage() {
               </div>
             ) : null}
 
+            {archiveResult ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 shadow-sm">
+                <p className="font-medium">Archive completed for {archiveResult.month}</p>
+                <p className="mt-1 text-emerald-900/80">
+                  Window: {archiveResult.from} to {archiveResult.to}
+                </p>
+                <p className="mt-2 text-emerald-900/90">
+                  Sales archived: {archiveResult.tables_archived.sales ?? 0} · Purchases archived: {archiveResult.tables_archived.purchases ?? 0}
+                </p>
+              </div>
+            ) : null}
+
             {missingDaysHint ? <p className="text-xs text-muted-foreground">{missingDaysHint}</p> : null}
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={isArchiveConfirmOpen}
+        onOpenChange={setIsArchiveConfirmOpen}
+        title="Archive selected month"
+        description={`Archive and remove the active records for ${month || 'the selected month'}. This action cannot be undone.`}
+        confirmText="Archive"
+        onConfirm={handleArchiveMonth}
+        isLoading={archiveMutation.isPending}
+      />
     </div>
   )
 }
