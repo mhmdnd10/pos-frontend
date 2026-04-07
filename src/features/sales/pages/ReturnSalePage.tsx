@@ -444,7 +444,7 @@ export function ReturnSalePage() {
       color: #0f172a;
     }
     .col-name {
-      width: 52%;
+      width: 56%;
       text-align: left;
       direction: rtl;
       unicode-bidi: plaintext;
@@ -455,19 +455,23 @@ export function ReturnSalePage() {
       color: #0f172a;
     }
     .col-qty {
-      width: 14%;
+      width: 12%;
       text-align: left;
     }
     .col-price,
     .col-total {
-      width: 17%;
+      width: 16%;
       text-align: left;
       font-weight: 700;
+    }
+    .header-line {
+      color: #111827;
+      font-weight: 800;
     }
   </style>
 </head>
 <body>
-  <pre class="receipt">${receiptLines.slice(0, !isWalkinReturn && printable.activeInvoice ? 9 : 8).join('\r\n')}</pre>
+  <pre class="receipt header-line">${receiptLines.slice(0, !isWalkinReturn && printable.activeInvoice ? 9 : 8).join('\r\n')}</pre>
   <table class="items">
     <thead>
       <tr>

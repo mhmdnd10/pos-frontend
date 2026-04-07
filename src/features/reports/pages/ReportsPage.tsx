@@ -109,13 +109,15 @@ function buildReportPrintHtml(
           }
           .center-line {
             text-align: left;
-            font-weight: 700;
+            font-weight: 800;
+            color: #111827;
             letter-spacing: 0.2px;
           }
           .muted-line {
             text-align: left;
             font-size: 12px;
-            color: #334155;
+            color: #111827;
+            font-weight: 700;
           }
           .divider {
             border-top: 1px dashed #475569;
@@ -139,6 +141,7 @@ function buildReportPrintHtml(
             padding: 5px 4px;
             margin-bottom: 8px;
             background: #f8fafc;
+            width: 100%;
           }
           .section-title {
             text-align: left;
@@ -150,8 +153,8 @@ function buildReportPrintHtml(
             unicode-bidi: plaintext;
           }
           .metric-row {
-            display: flex;
-            justify-content: flex-start;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
             gap: 8px;
             align-items: center;
             padding: 3px 0;
@@ -167,15 +170,15 @@ function buildReportPrintHtml(
             color: #0f172a;
             font-size: 13px;
             font-weight: 600;
-            flex: 1;
             min-width: 0;
             overflow-wrap: anywhere;
+            line-height: 1.25;
           }
           .metric-value {
             color: #111827;
             font-weight: 700;
             font-size: 13px;
-            min-width: 72px;
+            min-width: 20mm;
             text-align: left;
           }
           .thanks {

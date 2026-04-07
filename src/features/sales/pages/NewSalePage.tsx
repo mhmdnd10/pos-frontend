@@ -204,6 +204,9 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
     '',
   ]
 
+  const headerLines = receiptLines.slice(0, 12)
+  const footerLines = receiptLines.slice(12)
+
   return `
     <!doctype html>
     <html>
@@ -219,10 +222,19 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             margin: 0 auto;
             padding: 0.5mm 0.5mm 0 0.5mm;
             line-height: 1.35;
-            white-space: pre;
             text-align: left;
             direction: ltr;
             unicode-bidi: plaintext;
+          }
+          .receipt-line {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+          }
+          .shop-name,
+          .shop-subtitle,
+          .shop-meta {
+            color: #111827;
+            font-weight: 700;
           }
           .items {
             width: 100%;
@@ -258,10 +270,42 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             width: 17%;
             text-align: left;
           }
+          .totals {
+            margin-top: 4px;
+            border-top: 1px dashed #475569;
+            padding-top: 4px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: flex-start;
+            gap: 10px;
+            align-items: center;
+            padding: 2px 0;
+            color: #111827;
+            font-weight: 700;
+          }
+          .total-label {
+            min-width: 30mm;
+            text-align: left;
+            direction: rtl;
+            unicode-bidi: plaintext;
+            overflow-wrap: anywhere;
+          }
+          .total-value {
+            margin-left: auto;
+            text-align: left;
+            min-width: 18mm;
+          }
         </style>
       </head>
       <body>
-        <pre class="receipt">${escapeHtml(receiptLines.slice(0, 12).join('\r\n'))}</pre>
+        <div class="receipt">
+          ${headerLines
+            .map((line, index) => {
+              const className = index < 4 ? 'receipt-line shop-name' : index === 4 ? 'receipt-line' : 'receipt-line shop-meta'
+              return `<div class="${className}">${escapeHtml(line)}</div>`
+            })
+            .join('')}
         <table class="items">
           <thead>
             <tr>
@@ -275,7 +319,30 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             ${itemRowsHtml}
           </tbody>
         </table>
-        <pre class="receipt">${escapeHtml(receiptLines.slice(12).join('\r\n'))}</pre>
+          <div class="totals">
+            ${footerLines
+              .map((line) => {
+                if (!line.trim()) {
+                  return ''
+                }
+
+                const separatorIndex = line.indexOf(':')
+                if (separatorIndex === -1) {
+                  return `<div class="receipt-line shop-meta">${escapeHtml(line)}</div>`
+                }
+
+                const label = line.slice(0, separatorIndex).trim()
+                const value = line.slice(separatorIndex + 1).trim()
+                return `
+                  <div class="total-row">
+                    <span class="total-label">${escapeHtml(label)}</span>
+                    <span class="total-value">${escapeHtml(value)}</span>
+                  </div>
+                `
+              })
+              .join('')}
+          </div>
+        </div>
       </body>
     </html>
   `
