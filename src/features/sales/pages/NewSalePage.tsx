@@ -218,7 +218,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           html, body { margin: 0; padding: 0; color: #111; }
           body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; }
           .receipt {
-            width: 80mm;
+            width: 76mm;
             margin: 0;
             padding: 0.25mm 0 0 0;
             line-height: 1.25;
@@ -235,8 +235,8 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           .shop-name,
           .shop-subtitle,
           .shop-meta {
-            color: #111827;
-            font-weight: 700;
+            color: #000;
+            font-weight: 800;
           }
           .receipt-block {
             display: block;
@@ -251,34 +251,40 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             margin: 2px 0 0;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 9px;
+            font-size: 8.5px;
+            color: #000;
           }
           .items th,
           .items td {
             border-bottom: 1px dashed #cbd5e1;
             padding: 0.5px 0;
             vertical-align: top;
+            color: #000;
           }
           .items thead th {
-            font-weight: 700;
+            font-weight: 800;
             border-top: 1px dashed #cbd5e1;
+            color: #000;
           }
           .col-name {
-            width: 32%;
+            width: 26%;
             text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
             word-break: break-word;
             overflow-wrap: anywhere;
+            color: #000;
           }
           .col-qty {
             width: 14%;
             text-align: left;
+            color: #000;
           }
           .col-price,
           .col-total {
-            width: 27%;
+            width: 30%;
             text-align: left;
+            color: #000;
           }
           .totals {
             margin-top: 2px;
@@ -286,13 +292,14 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             padding-top: 2px;
           }
           .total-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 4px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: baseline;
+            gap: 2px;
             align-items: center;
             padding: 1px 0;
-            color: #111827;
-            font-weight: 700;
+            color: #000;
+            font-weight: 800;
           }
           .total-label {
             min-width: 0;
@@ -300,10 +307,14 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             direction: rtl;
             unicode-bidi: plaintext;
             overflow-wrap: anywhere;
+            color: #000;
+            flex: 1 1 auto;
           }
           .total-value {
             text-align: left;
-            min-width: 14mm;
+            min-width: 12mm;
+            color: #000;
+            flex: 0 0 auto;
           }
         </style>
       </head>
