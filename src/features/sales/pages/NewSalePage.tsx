@@ -251,7 +251,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             margin: 2px 0 0;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 9.5px;
+            font-size: 10px;
             color: #000;
           }
           .items th,
@@ -266,6 +266,10 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             border-top: 1px dashed #cbd5e1;
             color: #000;
             font-size: 9px;
+          }
+          .items tbody td {
+            font-weight: 800;
+            font-size: 10px;
           }
           .col-name {
             width: 26%;
