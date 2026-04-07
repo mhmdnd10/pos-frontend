@@ -218,9 +218,9 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           html, body { margin: 0; padding: 0; color: #111; }
           body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; }
           .receipt {
-            width: 78mm;
-            margin: 0 auto;
-            padding: 0.5mm 0.5mm 0 0.5mm;
+            width: 80mm;
+            margin: 0;
+            padding: 0.25mm 0 0 0;
             line-height: 1.25;
             text-align: left;
             direction: ltr;
@@ -248,15 +248,15 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           }
           .items {
             width: 100%;
-            margin: 3px auto;
+            margin: 2px 0 0;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 10px;
+            font-size: 9px;
           }
           .items th,
           .items td {
             border-bottom: 1px dashed #cbd5e1;
-            padding: 1px 0.5px;
+            padding: 0.5px 0;
             vertical-align: top;
           }
           .items thead th {
@@ -264,7 +264,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             border-top: 1px dashed #cbd5e1;
           }
           .col-name {
-            width: 40%;
+            width: 32%;
             text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
@@ -272,25 +272,25 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             overflow-wrap: anywhere;
           }
           .col-qty {
-            width: 15%;
+            width: 14%;
             text-align: left;
           }
           .col-price,
           .col-total {
-            width: 22.5%;
+            width: 27%;
             text-align: left;
           }
           .totals {
-            margin-top: 4px;
+            margin-top: 2px;
             border-top: 1px dashed #475569;
-            padding-top: 4px;
+            padding-top: 2px;
           }
           .total-row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
-            gap: 6px;
+            gap: 4px;
             align-items: center;
-            padding: 2px 0;
+            padding: 1px 0;
             color: #111827;
             font-weight: 700;
           }
@@ -303,7 +303,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           }
           .total-value {
             text-align: left;
-            min-width: 16mm;
+            min-width: 14mm;
           }
         </style>
       </head>
