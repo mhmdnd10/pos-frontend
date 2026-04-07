@@ -6,11 +6,59 @@ import { dashboardService } from '@/features/dashboard/services/dashboardService
 import { getApiErrorMessage } from '@/lib/api/response'
 import { queryKeys } from '@/lib/constants/queryKeys'
 
+const dashboardMetricLabels: Record<string, string> = {
+  today_sales: 'Today Sales',
+  today_purchases: 'Today Purchases',
+  today_returns: 'Today Returns',
+  total_customers: 'Total Customers',
+  total_suppliers: 'Total Suppliers',
+  lowest_stock_products: 'Lowest Stock Products',
+}
+
+const preferredMetricOrder = [
+  'today_sales',
+  'today_returns',
+  'today_purchases',
+  'total_customers',
+  'total_suppliers',
+  'lowest_stock_products',
+]
+
+function formatMetricValue(value: unknown) {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value.toLocaleString() : String(value)
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+
+  return String(value)
+}
+
 export function DashboardPage() {
   const dashboardQuery = useQuery({
     queryKey: queryKeys.dashboard,
     queryFn: dashboardService.getDashboard,
   })
+
+  const dashboardEntries = (() => {
+    const data = (dashboardQuery.data ?? {}) as Record<string, unknown>
+    const orderedKeys = [
+      ...preferredMetricOrder.filter((key) => key in data),
+      ...Object.keys(data).filter((key) => !preferredMetricOrder.includes(key)),
+    ]
+
+    return orderedKeys.map((key) => ({
+      key,
+      label: dashboardMetricLabels[key] ?? key.replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+      value: formatMetricValue(data[key]),
+    }))
+  })()
 
   return (
     <div>
@@ -36,14 +84,14 @@ export function DashboardPage() {
       ) : null}
 
       {!dashboardQuery.isLoading && !dashboardQuery.isError ? (
-        Object.keys(dashboardQuery.data ?? {}).length === 0 ? (
+        dashboardEntries.length === 0 ? (
           <div className="rounded-md border p-6 text-sm text-muted-foreground">No dashboard data available.</div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {Object.entries(dashboardQuery.data ?? {}).map(([key, value]) => (
-              <div key={key} className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">{key}</p>
-                <p className="mt-2 text-xl font-semibold">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
+            {dashboardEntries.map((entry) => (
+              <div key={entry.key} className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">{entry.label}</p>
+                <p className="mt-2 text-xl font-semibold">{entry.value}</p>
               </div>
             ))}
           </div>

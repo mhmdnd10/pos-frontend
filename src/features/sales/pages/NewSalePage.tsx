@@ -96,7 +96,7 @@ function toPositiveNumber(value: string) {
 
 function toPositiveQuantity(value: string) {
   const parsed = parseNumericValue(value)
-  return parsed !== null && parsed > 0 ? parsed : null
+  return parsed !== null && parsed >= 1 ? parsed : null
 }
 
 function toNonNegativeNumber(value?: string) {
@@ -125,24 +125,6 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
 
   const sanitizeText = (value: string) => value.trim()
 
-  const wrapText = (value: string, maxLength: number): string[] => {
-    const words = value.split(' ')
-    const lines: string[] = []
-    let currentLine = ''
-
-    for (const word of words) {
-      if ((currentLine + ' ' + word).trim().length <= maxLength) {
-        currentLine = (currentLine + ' ' + word).trim()
-      } else {
-        if (currentLine) lines.push(currentLine)
-        currentLine = word.length <= maxLength ? word : word.substring(0, maxLength)
-      }
-    }
-
-    if (currentLine) lines.push(currentLine)
-    return lines.length > 0 ? lines : ['Item']
-  }
-
   const formatMoney = (value: number) => value.toFixed(2)
   const formatKeyValue = (key: string, value: string) => `${key.padEnd(12)}: ${value}`
 
@@ -168,22 +150,28 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
   const customerName = (sanitizeText(customerNameRaw) || 'Walk-in Customer').slice(0, lineWidth - 10).padEnd(lineWidth - 10)
   const customerPhone = sanitizeText(receipt.customerPhone?.trim() || '-') || '-'
 
-  const itemHeader = `${'العرض'.padEnd(11)} ${'الكمية'.padEnd(4)} ${'السعر'.padEnd(7)} ${'المجموع'.padEnd(7)}`
-  const itemLines: string[] = []
-  receipt.items.forEach((item) => {
-    const itemNameLines = wrapText(sanitizeText(item.name) || '-', 11)
-    const qty = String(item.quantity)
-    const price = formatMoney(item.unitPrice)
-    const total = formatMoney(item.lineTotal)
-    
-    itemNameLines.forEach((line, index) => {
-      if (index === 0) {
-        itemLines.push(`${line.padEnd(11)} ${qty.padStart(4)} ${price.padStart(7)} ${total.padStart(7)}`)
-      } else {
-        itemLines.push(line.padEnd(32))
-      }    })
+  const formatQuantity = (value: number) => {
+    const qty = Number(value)
+    if (!Number.isFinite(qty)) {
+      return '0'
+    }
 
-  })
+    return Number.isInteger(qty) ? String(qty) : qty.toFixed(2)
+  }
+
+  const itemRowsHtml = receipt.items
+    .map((item) => {
+      const itemName = sanitizeText(item.name) || '-'
+      return `
+        <tr>
+          <td class="col-name">${escapeHtml(itemName)}</td>
+          <td class="col-qty">${escapeHtml(formatQuantity(item.quantity))}</td>
+          <td class="col-price">${escapeHtml(formatMoney(item.unitPrice))}</td>
+          <td class="col-total">${escapeHtml(formatMoney(item.lineTotal))}</td>
+        </tr>
+      `
+    })
+    .join('')
 
   const receiptLines = [
     'HOME DECORATION',
@@ -197,9 +185,6 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
     formatKeyValue('Invoice', sanitizeText(receipt.invoiceNumber) || 'Pending (save sale first)'),
     formatKeyValue('Date', receiptDate),
     formatKeyValue('Time', receiptTime),
-    divider,
-    itemHeader,
-    ...itemLines,
     divider,
     formatKeyValue('Total Amount', formatMoney(receipt.total)),
     formatKeyValue('Paid Amount', formatMoney(receipt.paid)),
@@ -239,10 +224,57 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             direction: ltr;
             unicode-bidi: plaintext;
           }
+          .items {
+            width: 72mm;
+            margin: 3px auto;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+          }
+          .items th,
+          .items td {
+            border-bottom: 1px dashed #cbd5e1;
+            padding: 2px 1px;
+            vertical-align: top;
+          }
+          .items thead th {
+            font-weight: 700;
+            border-top: 1px dashed #cbd5e1;
+          }
+          .col-name {
+            width: 43%;
+            text-align: right;
+            direction: rtl;
+            unicode-bidi: plaintext;
+            word-break: break-word;
+          }
+          .col-qty {
+            width: 14%;
+            text-align: right;
+          }
+          .col-price,
+          .col-total {
+            width: 21.5%;
+            text-align: right;
+          }
         </style>
       </head>
       <body>
-        <pre class="receipt">${escapeHtml(receiptLines.join('\r\n'))}</pre>
+        <pre class="receipt">${escapeHtml(receiptLines.slice(0, 12).join('\r\n'))}</pre>
+        <table class="items">
+          <thead>
+            <tr>
+              <th class="col-name">العرض</th>
+              <th class="col-qty">الكمية</th>
+              <th class="col-price">السعر</th>
+              <th class="col-total">المجموع</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRowsHtml}
+          </tbody>
+        </table>
+        <pre class="receipt">${escapeHtml(receiptLines.slice(12).join('\r\n'))}</pre>
       </body>
     </html>
   `
@@ -465,7 +497,7 @@ export function NewSalePage() {
                   }
 
                   if (!quantity) {
-                    form.setError(`items.${index}.quantity`, { message: 'Enter valid quantity' })
+                    form.setError(`items.${index}.quantity`, { message: 'Quantity must be at least 1' })
                     return null
                   }
 
@@ -700,7 +732,7 @@ export function NewSalePage() {
 
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Wanted Qty</Label>
-                        <Input type="number" min="0.01" step="0.01" {...form.register(`items.${index}.quantity`)} />
+                        <Input type="number" min="1" step="0.01" {...form.register(`items.${index}.quantity`)} />
                       </div>
 
                       <div className="space-y-1">

@@ -44,59 +44,49 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#39;')
 }
 
-function formatReportKeyValue(key: string, value: string) {
-  return `${key.padEnd(18)}: ${value}`
-}
-
 function buildReportPrintHtml(
   dailySummary: DailySummaryReport | null,
   monthlyReport: MonthlySummaryReport | null,
 ) {
   const now = new Date()
-  const lineWidth = 36
-  const divider = '-'.repeat(lineWidth)
   const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const date = now.toLocaleDateString()
 
-  const receiptLines = [
-    'HOME DECORATION',
-    'AL QMATIYEH',
-    'kmatieh-main street',
-    '03109497 | 03909497',
-    divider,
-    'REPORT PRINT',
-    formatReportKeyValue('Date', date),
-    formatReportKeyValue('Time', time),
-    divider,
-  ]
+  const dailyRows = dailySummary
+    ? [
+        { label: 'إجمالي المبيعات', value: formatAmount(dailySummary.total_sales) },
+        { label: 'إجمالي المرتجعات', value: formatAmount(dailySummary.total_return_sales) },
+        { label: 'إجمالي المشتريات', value: formatAmount(dailySummary.total_purchases) },
+        { label: 'دفعات العملاء', value: formatAmount(dailySummary.customer_payments) },
+        { label: 'دفعات الموردين', value: formatAmount(dailySummary.supplier_payments) },
+        { label: 'عدد المبيعات', value: formatCount(dailySummary.sales_count) },
+        { label: 'عدد المشتريات', value: formatCount(dailySummary.purchases_count) },
+      ]
+    : []
 
-  if (dailySummary) {
-    receiptLines.push(
-      `DAILY SUMMARY (${dailySummary.business_date})`,
-      formatReportKeyValue('Total Sales', formatAmount(dailySummary.total_sales)),
-      formatReportKeyValue('Total Purchases', formatAmount(dailySummary.total_purchases)),
-      formatReportKeyValue('Customer Payments', formatAmount(dailySummary.customer_payments)),
-      formatReportKeyValue('Supplier Payments', formatAmount(dailySummary.supplier_payments)),
-      formatReportKeyValue('Sales Count', formatCount(dailySummary.sales_count)),
-      formatReportKeyValue('Purchases Count', formatCount(dailySummary.purchases_count)),
-      divider,
-    )
-  }
+  const monthlyRows = monthlyReport
+    ? [
+        { label: 'إجمالي المبيعات', value: formatAmount(monthlyReport.total_sales) },
+        { label: 'إجمالي المرتجعات', value: formatAmount(monthlyReport.total_return_sales) },
+        { label: 'إجمالي المشتريات', value: formatAmount(monthlyReport.total_purchases) },
+        { label: 'دفعات العملاء', value: formatAmount(monthlyReport.customer_payments) },
+        { label: 'دفعات الموردين', value: formatAmount(monthlyReport.supplier_payments) },
+        { label: 'عدد المبيعات', value: formatCount(monthlyReport.sales_count) },
+        { label: 'عدد المشتريات', value: formatCount(monthlyReport.purchases_count) },
+      ]
+    : []
 
-  if (monthlyReport) {
-    receiptLines.push(
-      `MONTHLY SUMMARY (${monthlyReport.month})`,
-      formatReportKeyValue('Total Sales', formatAmount(monthlyReport.total_sales)),
-      formatReportKeyValue('Total Purchases', formatAmount(monthlyReport.total_purchases)),
-      formatReportKeyValue('Customer Payments', formatAmount(monthlyReport.customer_payments)),
-      formatReportKeyValue('Supplier Payments', formatAmount(monthlyReport.supplier_payments)),
-      formatReportKeyValue('Sales Count', formatCount(monthlyReport.sales_count)),
-      formatReportKeyValue('Purchases Count', formatCount(monthlyReport.purchases_count)),
-      divider,
-    )
-  }
-
-  receiptLines.push('Thank you')
+  const renderRows = (rows: Array<{ label: string; value: string }>) =>
+    rows
+      .map(
+        (row) => `
+          <div class="metric-row">
+            <span class="metric-label">${escapeHtml(row.label)}</span>
+            <span class="metric-value">${escapeHtml(row.value)}</span>
+          </div>
+        `,
+      )
+      .join('')
 
   return `
     <!doctype html>
@@ -107,21 +97,126 @@ function buildReportPrintHtml(
         <style>
           @page { size: 80mm auto; margin: 2mm; }
           html, body { margin: 0; padding: 0; color: #111; }
-          body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; }
+          body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; background: #fff; }
           .receipt {
             width: 74mm;
             margin: 0 auto;
-            padding: 1mm;
-            line-height: 1.35;
-            white-space: pre;
+            padding: 1.5mm;
+            line-height: 1.4;
             text-align: left;
             direction: ltr;
+            unicode-bidi: plaintext;
+          }
+          .center-line {
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+          }
+          .muted-line {
+            text-align: center;
+            font-size: 12px;
+            color: #334155;
+          }
+          .divider {
+            border-top: 1px dashed #475569;
+            margin: 6px 0;
+          }
+          .meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #1f2937;
+            margin: 2px 0;
+          }
+          .meta-label {
+            font-weight: 700;
+          }
+          .section {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+          }
+          .section-title {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+          }
+          .metric-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: center;
+            padding: 3px 0;
+            border-bottom: 1px dotted #cbd5e1;
+          }
+          .metric-row:last-child {
+            border-bottom: 0;
+          }
+          .metric-label {
+            direction: rtl;
+            unicode-bidi: plaintext;
+            text-align: right;
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 600;
+            flex: 1;
+          }
+          .metric-value {
+            color: #111827;
+            font-weight: 700;
+            font-size: 13px;
+            min-width: 82px;
+            text-align: right;
+          }
+          .thanks {
+            text-align: center;
+            margin-top: 8px;
+            font-weight: 700;
+            color: #0f172a;
+            direction: rtl;
             unicode-bidi: plaintext;
           }
         </style>
       </head>
       <body>
-        <pre class="receipt">${escapeHtml(receiptLines.join('\r\n'))}</pre>
+        <div class="receipt">
+          <div class="center-line">HOME DECORATION</div>
+          <div class="center-line">AL QMATIYEH</div>
+          <div class="muted-line">kmatieh-main street</div>
+          <div class="muted-line">03109497 | 03909497</div>
+
+          <div class="divider"></div>
+          <div class="center-line">REPORT PRINT</div>
+          <div class="meta-row"><span class="meta-label">Date</span><span>${escapeHtml(date)}</span></div>
+          <div class="meta-row"><span class="meta-label">Time</span><span>${escapeHtml(time)}</span></div>
+          <div class="divider"></div>
+
+          ${
+            dailySummary
+              ? `<section class="section">
+                  <div class="section-title">ملخص يومي (${escapeHtml(dailySummary.business_date)})</div>
+                  ${renderRows(dailyRows)}
+                </section>`
+              : ''
+          }
+
+          ${
+            monthlyReport
+              ? `<section class="section">
+                  <div class="section-title">ملخص شهري (${escapeHtml(monthlyReport.month)})</div>
+                  ${renderRows(monthlyRows)}
+                </section>`
+              : ''
+          }
+
+          <div class="divider"></div>
+          <div class="thanks">شكرا لشرائكم</div>
+        </div>
       </body>
     </html>
   `
@@ -387,6 +482,7 @@ export function ReportsPage() {
                 <p className="mb-3 text-sm font-medium text-muted-foreground">Summary for {dailySummary.business_date}</p>
                 <div className="grid gap-2 text-sm sm:grid-cols-2">
                   <p>Total Sales: {formatAmount(dailySummary.total_sales)}</p>
+                  <p>Total Returns: {formatAmount(dailySummary.total_return_sales)}</p>
                   <p>Total Purchases: {formatAmount(dailySummary.total_purchases)}</p>
                   <p>Customer Payments: {formatAmount(dailySummary.customer_payments)}</p>
                   <p>Supplier Payments: {formatAmount(dailySummary.supplier_payments)}</p>
@@ -456,6 +552,7 @@ export function ReportsPage() {
                 <p className="mb-3 text-sm font-medium text-muted-foreground">Summary for {monthlyReport.month}</p>
                 <div className="grid gap-2 text-sm sm:grid-cols-2">
                   <p>Total Sales: {formatAmount(monthlyReport.total_sales)}</p>
+                  <p>Total Returns: {formatAmount(monthlyReport.total_return_sales)}</p>
                   <p>Total Purchases: {formatAmount(monthlyReport.total_purchases)}</p>
                   <p>Customer Payments: {formatAmount(monthlyReport.customer_payments)}</p>
                   <p>Supplier Payments: {formatAmount(monthlyReport.supplier_payments)}</p>

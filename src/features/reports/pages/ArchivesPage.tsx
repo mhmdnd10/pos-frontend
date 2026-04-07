@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { ArchiveRestore, CalendarDays, Database, Layers, Table2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DataTable, type DataTableColumn } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/shared/ui/button'
@@ -8,8 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/shared/ui/input'
 import { Label } from '@/components/shared/ui/label'
 import { archiveService } from '@/features/reports/services/archiveService'
+import { buildProductDisplayName } from '@/features/products/utils/productDisplay'
 import type { ArchiveDatasetKey, ArchiveMonthlyResult, ArchiveRow } from '@/features/reports/types'
-import { getApiErrorMessage } from '@/lib/api/response'
+import { httpClient } from '@/lib/api/httpClient'
+import { getApiErrorMessage, normalizeItemResponse } from '@/lib/api/response'
+import { endpoints } from '@/lib/constants/endpoints'
 
 const datasetMeta: Array<{ key: ArchiveDatasetKey; label: string; colorClass: string }> = [
   { key: 'sales', label: 'Sales', colorClass: 'bg-cyan-100 text-cyan-900 border-cyan-200' },
@@ -58,7 +61,14 @@ function getRowId(row: ArchiveRow, index: number) {
   return `${index}`
 }
 
-function createColumns(rows: ArchiveRow[]): DataTableColumn<ArchiveRow>[] {
+type NameLookups = {
+  products: Record<number, string>
+  customers: Record<number, string>
+  suppliers: Record<number, string>
+  shops: Record<number, string>
+}
+
+function createColumns(rows: ArchiveRow[], lookups: NameLookups): DataTableColumn<ArchiveRow>[] {
   if (rows.length === 0) {
     return []
   }
@@ -82,6 +92,34 @@ function createColumns(rows: ArchiveRow[]): DataTableColumn<ArchiveRow>[] {
     render: (row) => {
       const value = row[key]
 
+      if (key === 'product_id') {
+        const id = Number(value)
+        if (Number.isFinite(id) && id > 0) {
+          return lookups.products[id] ? `${lookups.products[id]} (#${id})` : `Product #${id}`
+        }
+      }
+
+      if (key === 'customer_id') {
+        const id = Number(value)
+        if (Number.isFinite(id) && id > 0) {
+          return lookups.customers[id] ? `${lookups.customers[id]} (#${id})` : `Customer #${id}`
+        }
+      }
+
+      if (key === 'supplier_id') {
+        const id = Number(value)
+        if (Number.isFinite(id) && id > 0) {
+          return lookups.suppliers[id] ? `${lookups.suppliers[id]} (#${id})` : `Supplier #${id}`
+        }
+      }
+
+      if (key === 'shop_id') {
+        const id = Number(value)
+        if (Number.isFinite(id) && id > 0) {
+          return lookups.shops[id] ?? `Shop #${id}`
+        }
+      }
+
       if (value === null || value === undefined || value === '') {
         return '-'
       }
@@ -99,6 +137,12 @@ export function ArchivesPage() {
   const [month, setMonth] = useState(currentMonthValue)
   const [archiveData, setArchiveData] = useState<ArchiveMonthlyResult | null>(null)
   const [activeDataset, setActiveDataset] = useState<ArchiveDatasetKey>('sales')
+  const [lookups, setLookups] = useState<NameLookups>({
+    products: {},
+    customers: {},
+    suppliers: {},
+    shops: {},
+  })
 
   const fetchArchiveMutation = useMutation({
     mutationFn: (selectedMonth: string) => archiveService.getArchivesByMonth(selectedMonth),
@@ -109,7 +153,112 @@ export function ArchivesPage() {
 
   const rows = archiveData?.data?.[activeDataset] ?? []
 
-  const columns = useMemo(() => createColumns(rows), [rows])
+  const columns = useMemo(() => createColumns(rows, lookups), [rows, lookups])
+
+  useEffect(() => {
+    let isActive = true
+
+    async function hydrateIdNames() {
+      if (!archiveData) {
+        if (isActive) {
+          setLookups({ products: {}, customers: {}, suppliers: {}, shops: {} })
+        }
+        return
+      }
+
+      const allRows = Object.values(archiveData.data).flat()
+
+      const productIds = new Set<number>()
+      const customerIds = new Set<number>()
+      const supplierIds = new Set<number>()
+      const shopIds = new Set<number>()
+
+      allRows.forEach((row) => {
+        const productId = Number(row.product_id)
+        if (Number.isFinite(productId) && productId > 0) {
+          productIds.add(productId)
+        }
+
+        const customerId = Number(row.customer_id)
+        if (Number.isFinite(customerId) && customerId > 0) {
+          customerIds.add(customerId)
+        }
+
+        const supplierId = Number(row.supplier_id)
+        if (Number.isFinite(supplierId) && supplierId > 0) {
+          supplierIds.add(supplierId)
+        }
+
+        const shopId = Number(row.shop_id)
+        if (Number.isFinite(shopId) && shopId > 0) {
+          shopIds.add(shopId)
+        }
+      })
+
+      const productsLookup: Record<number, string> = {}
+      const customersLookup: Record<number, string> = {}
+      const suppliersLookup: Record<number, string> = {}
+      const shopsLookup: Record<number, string> = {}
+
+      await Promise.all(
+        Array.from(productIds).map(async (id) => {
+          try {
+            const { data } = await httpClient.get(endpoints.products.byId(id))
+            const item = normalizeItemResponse<Record<string, unknown>>(data)
+            const label = buildProductDisplayName(item)
+            productsLookup[id] = label || `Product #${id}`
+          } catch {
+            productsLookup[id] = `Product #${id}`
+          }
+        }),
+      )
+
+      await Promise.all(
+        Array.from(customerIds).map(async (id) => {
+          try {
+            const { data } = await httpClient.get(endpoints.customers.byId(id))
+            const item = normalizeItemResponse<Record<string, unknown>>(data)
+            const name = typeof item.name === 'string' && item.name.trim().length > 0 ? item.name.trim() : `Customer #${id}`
+            customersLookup[id] = name
+          } catch {
+            customersLookup[id] = `Customer #${id}`
+          }
+        }),
+      )
+
+      await Promise.all(
+        Array.from(supplierIds).map(async (id) => {
+          try {
+            const { data } = await httpClient.get(endpoints.suppliers.byId(id))
+            const item = normalizeItemResponse<Record<string, unknown>>(data)
+            const name = typeof item.name === 'string' && item.name.trim().length > 0 ? item.name.trim() : `Supplier #${id}`
+            suppliersLookup[id] = name
+          } catch {
+            suppliersLookup[id] = `Supplier #${id}`
+          }
+        }),
+      )
+
+      Array.from(shopIds).forEach((id) => {
+        shopsLookup[id] = `Shop #${id}`
+      })
+
+      if (isActive) {
+        setLookups({
+          products: productsLookup,
+          customers: customersLookup,
+          suppliers: suppliersLookup,
+          shops: shopsLookup,
+        })
+      }
+    }
+
+    void hydrateIdNames()
+
+    return () => {
+      isActive = false
+    }
+  }, [archiveData])
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -22,13 +22,20 @@ function formatPrice(value: Product['sale_price'] | Product['purchase_price'] | 
   return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00'
 }
 
+function parseNumeric(value: unknown) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function getStock(product: Product) {
-  if (Number.isFinite(product.stock_quantity)) {
-    return Number(product.stock_quantity)
+  const stockQuantity = parseNumeric(product.stock_quantity)
+  if (stockQuantity !== null) {
+    return stockQuantity
   }
 
-  if (Number.isFinite(product.stock)) {
-    return Number(product.stock)
+  const stock = parseNumeric(product.stock)
+  if (stock !== null) {
+    return stock
   }
 
   return 0

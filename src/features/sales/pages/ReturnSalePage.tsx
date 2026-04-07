@@ -28,6 +28,16 @@ interface ReturnLine {
 
 type ReturnMode = 'by-invoice' | 'without-invoice'
 
+interface ReturnPrintSnapshot {
+  lines: ReturnLine[]
+  saleDate: string
+  paidAmount: number
+  total: number
+  remaining: number
+  mode: ReturnMode
+  activeInvoice: string
+}
+
 function parseNumericValue(value?: string) {
   const normalizedValue = (value ?? '').trim().replace(',', '.')
   const parsed = Number(normalizedValue)
@@ -36,12 +46,21 @@ function parseNumericValue(value?: string) {
 
 function toPositiveQuantity(value: string) {
   const parsed = parseNumericValue(value)
-  return parsed !== null && parsed > 0 ? parsed : null
+  return parsed !== null && parsed >= 1 ? parsed : null
 }
 
 function toNonNegativeNumber(value: string) {
   const parsed = parseNumericValue(value)
   return parsed !== null && parsed >= 0 ? parsed : null
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 }
 
 function extractSaleItems(source: Record<string, unknown>): ReturnLine[] {
@@ -136,6 +155,7 @@ export function ReturnSalePage() {
   const [pickerValue, setPickerValue] = useState('')
   const [loadedPaidAmount, setLoadedPaidAmount] = useState(0)
   const shouldPrintAfterSaveRef = useRef(false)
+  const printSnapshotRef = useRef<ReturnPrintSnapshot | null>(null)
 
   function resetInvoiceFlowState() {
     setInvoiceInput('')
@@ -230,13 +250,29 @@ export function ReturnSalePage() {
       toast.success('Sale invoice updated successfully.')
 
       if (shouldPrintAfterSaveRef.current) {
-        handlePrintReturn()
+        const snapshot = printSnapshotRef.current
+        handlePrintReturn(
+          snapshot ?? {
+            lines: enriched,
+            saleDate: String(source.sale_date ?? source.date ?? saleDate),
+            paidAmount: normalizedPaid,
+            total: enriched.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unit_price || 0), 0),
+            remaining: Math.max(
+              enriched.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unit_price || 0), 0) - normalizedPaid,
+              0,
+            ),
+            mode,
+            activeInvoice,
+          },
+        )
       }
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       navigate(routePaths.sales)
     },
     onError: (error) => {
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       toast.error(getApiErrorMessage(error, 'Failed to update sale invoice.'))
     },
   })
@@ -245,21 +281,35 @@ export function ReturnSalePage() {
     mutationFn: (payload: Record<string, unknown>) => saleService.quickReturn(payload),
     onSuccess: () => {
       if (shouldPrintAfterSaveRef.current) {
-        handlePrintReturn()
+        handlePrintReturn(printSnapshotRef.current ?? undefined)
       }
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       setReturnLines([])
       toast.success('Quick return processed successfully.')
       navigate(routePaths.sales)
     },
     onError: (error) => {
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       toast.error(getApiErrorMessage(error, 'Failed to process quick return.'))
     },
   })
 
-  function handlePrintReturn() {
-    if (returnLines.length === 0) {
+  function handlePrintReturn(snapshot?: ReturnPrintSnapshot) {
+    const printable =
+      snapshot ??
+      ({
+        lines: returnLines,
+        saleDate,
+        paidAmount: Number(paidAmount || 0),
+        total,
+        remaining,
+        mode,
+        activeInvoice,
+      } as ReturnPrintSnapshot)
+
+    if (printable.lines.length === 0) {
       toast.error('No return items to print.')
       return
     }
@@ -274,7 +324,7 @@ export function ReturnSalePage() {
     const formatKeyValue = (key: string, value: string) => `${key.padEnd(12)}: ${value}`
 
     const receiptDate = (() => {
-      const [year, month, day] = saleDate.split('-')
+      const [year, month, day] = printable.saleDate.split('-')
       if (year && month && day) {
         return `${Number(day)}/${Number(month)}/${year}`
       }
@@ -289,41 +339,37 @@ export function ReturnSalePage() {
       return `${hours12}:${minutes}${suffix}`
     })()
 
-    const isWalkinReturn = mode === 'without-invoice'
+    const isWalkinReturn = printable.mode === 'without-invoice'
     const returnType = isWalkinReturn ? 'QUICK RETURN' : 'RETURN / INVOICE UPDATE'
 
-    const itemHeader = `${'العرض'.padEnd(11)} ${'الكمية'.padEnd(4)} ${'السعر'.padEnd(7)} ${'المجموع'.padEnd(7)}`
-    const itemLines: string[] = []
-    returnLines.forEach((line) => {
-      const fullName = sanitizeText(line.product_name || '-')
-      const words = fullName.split(' ')
-      const itemNameLines: string[] = []
-      let currentLine = ''
-      
-      for (const word of words) {
-        if ((currentLine + ' ' + word).trim().length <= 11) {
-          currentLine = (currentLine + ' ' + word).trim()
-        } else {
-          if (currentLine) itemNameLines.push(currentLine)
-          currentLine = word.length <= 11 ? word : word.substring(0, 11)
-        }
+    const formatQuantity = (value: number) => {
+      if (!Number.isFinite(value)) {
+        return '0'
       }
-      if (currentLine) itemNameLines.push(currentLine)
-      
-      const qtyNumber = Number(line.quantity || 0)
-      const qty = Number.isInteger(qtyNumber) ? String(qtyNumber) : qtyNumber.toFixed(2)
-      const price = formatMoney(Number(line.unit_price || 0))
-      const lineTotal = formatMoney(Number(line.quantity || 0) * Number(line.unit_price || 0))
 
-      itemLines.push(`${itemNameLines[0].padEnd(11)} ${qty.padEnd(4)} ${price.padStart(7)} ${lineTotal.padStart(7)}`)
-      for (let i = 1; i < itemNameLines.length; i++) {
-        itemLines.push(itemNameLines[i].padEnd(11))
-      }
-    })
+      return Number.isInteger(value) ? String(value) : value.toFixed(2)
+    }
 
-    const displayTotal = isWalkinReturn ? -total : total
-    const displayPaid = isWalkinReturn ? -Number(paidAmount || 0) : Number(paidAmount || 0)
-    const displayRemaining = isWalkinReturn ? -remaining : remaining
+    const itemRowsHtml = printable.lines
+      .map((line) => {
+        const qtyNumber = Number(line.quantity || 0)
+        const priceNumber = Number(line.unit_price || 0)
+        const lineTotalNumber = qtyNumber * priceNumber
+
+        return `
+          <tr>
+            <td class="col-name">${escapeHtml(sanitizeText(line.product_name || '-'))}</td>
+            <td class="col-qty">${escapeHtml(formatQuantity(qtyNumber))}</td>
+            <td class="col-price">${escapeHtml(formatMoney(priceNumber))}</td>
+            <td class="col-total">${escapeHtml(formatMoney(lineTotalNumber))}</td>
+          </tr>
+        `
+      })
+      .join('')
+
+    const displayTotal = isWalkinReturn ? -printable.total : printable.total
+    const displayPaid = isWalkinReturn ? -printable.paidAmount : printable.paidAmount
+    const displayRemaining = isWalkinReturn ? -printable.remaining : printable.remaining
 
     let receiptLines = [
       'HOME DECORATION',
@@ -333,8 +379,8 @@ export function ReturnSalePage() {
       returnType,
     ]
 
-    if (!isWalkinReturn && activeInvoice) {
-      receiptLines.push(formatKeyValue('Invoice', sanitizeText(activeInvoice)))
+    if (!isWalkinReturn && printable.activeInvoice) {
+      receiptLines.push(formatKeyValue('Invoice', sanitizeText(printable.activeInvoice)))
     }
 
     receiptLines = [
@@ -342,14 +388,11 @@ export function ReturnSalePage() {
       formatKeyValue('Date', receiptDate),
       formatKeyValue('Time', receiptTime),
       divider,
-      itemHeader,
-      ...itemLines,
-      divider,
       formatKeyValue('Total Amount', formatMoney(displayTotal)),
       formatKeyValue('Paid Amount', formatMoney(displayPaid)),
       formatKeyValue('Remaining', formatMoney(displayRemaining)),
       divider,
-      'Thank you for your purchase',
+      'شكرا لشرائكم',
       '',
       '',
       '',
@@ -382,10 +425,62 @@ export function ReturnSalePage() {
       direction: ltr;
       unicode-bidi: plaintext;
     }
+    .items {
+      width: 72mm;
+      margin: 3px auto;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13px;
+    }
+    .items th,
+    .items td {
+      border-bottom: 1px dashed #cbd5e1;
+      padding: 2px 1px;
+      vertical-align: top;
+    }
+    .items thead th {
+      font-weight: 800;
+      border-top: 1px dashed #cbd5e1;
+      color: #0f172a;
+    }
+    .col-name {
+      width: 43%;
+      text-align: right;
+      direction: rtl;
+      unicode-bidi: plaintext;
+      word-break: break-word;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .col-qty {
+      width: 14%;
+      text-align: right;
+    }
+    .col-price,
+    .col-total {
+      width: 21.5%;
+      text-align: right;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
-  <pre class="receipt">${receiptLines.join('\r\n')}</pre>
+  <pre class="receipt">${receiptLines.slice(0, !isWalkinReturn && printable.activeInvoice ? 9 : 8).join('\r\n')}</pre>
+  <table class="items">
+    <thead>
+      <tr>
+        <th class="col-name">العرض</th>
+        <th class="col-qty">الكمية</th>
+        <th class="col-price">السعر</th>
+        <th class="col-total">المجموع</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemRowsHtml}
+    </tbody>
+  </table>
+  <pre class="receipt">${receiptLines.slice(!isWalkinReturn && printable.activeInvoice ? 9 : 8).join('\r\n')}</pre>
 </body>
 </html>`
 
@@ -454,12 +549,14 @@ export function ReturnSalePage() {
 
     if (mode === 'by-invoice' && !activeInvoice) {
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       toast.error('Load invoice first.')
       return
     }
 
     if (!saleDate.trim()) {
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       toast.error('Sale date is required.')
       return
     }
@@ -467,6 +564,7 @@ export function ReturnSalePage() {
     const parsedPaidAmount = toNonNegativeNumber(paidAmount)
     if (parsedPaidAmount === null) {
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       toast.error('Paid amount must be a non-negative number.')
       return
     }
@@ -493,8 +591,23 @@ export function ReturnSalePage() {
 
     if (parsedItems.length !== returnLines.length || parsedItems.length === 0) {
       shouldPrintAfterSaveRef.current = false
+      printSnapshotRef.current = null
       toast.error('Please provide valid products, quantities, and prices.')
       return
+    }
+
+    if (printAfterSave) {
+      printSnapshotRef.current = {
+        lines: returnLines,
+        saleDate,
+        paidAmount: parsedPaidAmount,
+        total,
+        remaining: Math.max(total - parsedPaidAmount, 0),
+        mode,
+        activeInvoice,
+      }
+    } else {
+      printSnapshotRef.current = null
     }
 
     if (mode === 'by-invoice') {
@@ -685,7 +798,7 @@ export function ReturnSalePage() {
                         <Input
                           id={`quantity-${index}`}
                           type="number"
-                          min="0.01"
+                          min="1"
                           step="0.01"
                           value={line.quantity}
                           onChange={(event) => handleUpdateLineQuantity(index, event.target.value)}
@@ -764,7 +877,7 @@ export function ReturnSalePage() {
                   type="button"
                   variant="outline"
                   size="lg"
-                  onClick={handlePrintReturn}
+                  onClick={() => handlePrintReturn()}
                   disabled={returnLines.length === 0}
                 >
                   <Printer className="h-4 w-4" />

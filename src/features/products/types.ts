@@ -14,10 +14,10 @@ export interface Product {
   category_id?: number | null
   sale_price?: number | string | null
   purchase_price?: number | string | null
-  stock_quantity?: number | null
+  stock_quantity?: number | string | null
   price?: number | string | null
   cost_price?: number | string | null
-  stock?: number | null
+  stock?: number | string | null
   image?: string | null
   is_active?: boolean | null
   minimum_stock_alert?: number | null
