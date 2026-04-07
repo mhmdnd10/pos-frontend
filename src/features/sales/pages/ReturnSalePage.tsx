@@ -340,7 +340,7 @@ export function ReturnSalePage() {
     })()
 
     const isWalkinReturn = printable.mode === 'without-invoice'
-    const returnType = isWalkinReturn ? 'QUICK RETURN' : 'RETURN / INVOICE UPDATE'
+    const returnType = isWalkinReturn ? 'مرتجع' : 'مرتجع / تحديث فاتورة'
 
     const formatQuantity = (value: number) => {
       if (!Number.isFinite(value)) {
@@ -416,9 +416,9 @@ export function ReturnSalePage() {
     html, body { margin: 0; padding: 0; color: #111; }
     body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; }
     .receipt {
-      width: 72mm;
+      width: 78mm;
       margin: 0 auto;
-      padding: 0.5mm 1mm 0 1mm;
+      padding: 0.5mm 0.5mm 0 0.5mm;
       line-height: 1.35;
       white-space: pre;
       text-align: left;
@@ -426,7 +426,7 @@ export function ReturnSalePage() {
       unicode-bidi: plaintext;
     }
     .items {
-      width: 72mm;
+      width: 100%;
       margin: 3px auto;
       border-collapse: collapse;
       table-layout: fixed;
@@ -444,23 +444,24 @@ export function ReturnSalePage() {
       color: #0f172a;
     }
     .col-name {
-      width: 43%;
-      text-align: right;
+      width: 52%;
+      text-align: left;
       direction: rtl;
       unicode-bidi: plaintext;
       word-break: break-word;
+      overflow-wrap: anywhere;
       font-size: 14px;
       font-weight: 700;
       color: #0f172a;
     }
     .col-qty {
       width: 14%;
-      text-align: right;
+      text-align: left;
     }
     .col-price,
     .col-total {
-      width: 21.5%;
-      text-align: right;
+      width: 17%;
+      text-align: left;
       font-weight: 700;
     }
   </style>

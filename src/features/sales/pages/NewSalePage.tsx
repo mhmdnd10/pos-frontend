@@ -190,7 +190,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
     formatKeyValue('Paid Amount', formatMoney(receipt.paid)),
     formatKeyValue('Remaining', formatMoney(receipt.remaining)),
     divider,
-    'Thank you for your purchase',
+    'شكرا لشرائكم',
     '',
     '',
     '',
@@ -215,9 +215,9 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           html, body { margin: 0; padding: 0; color: #111; }
           body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; }
           .receipt {
-            width: 72mm;
+            width: 78mm;
             margin: 0 auto;
-            padding: 0.5mm 1mm 0 1mm;
+            padding: 0.5mm 0.5mm 0 0.5mm;
             line-height: 1.35;
             white-space: pre;
             text-align: left;
@@ -225,7 +225,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             unicode-bidi: plaintext;
           }
           .items {
-            width: 72mm;
+            width: 100%;
             margin: 3px auto;
             border-collapse: collapse;
             table-layout: fixed;
@@ -242,20 +242,21 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             border-top: 1px dashed #cbd5e1;
           }
           .col-name {
-            width: 43%;
-            text-align: right;
+            width: 52%;
+            text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
             word-break: break-word;
+            overflow-wrap: anywhere;
           }
           .col-qty {
             width: 14%;
-            text-align: right;
+            text-align: left;
           }
           .col-price,
           .col-total {
-            width: 21.5%;
-            text-align: right;
+            width: 17%;
+            text-align: left;
           }
         </style>
       </head>

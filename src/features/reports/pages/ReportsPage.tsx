@@ -99,21 +99,21 @@ function buildReportPrintHtml(
           html, body { margin: 0; padding: 0; color: #111; }
           body { font-family: Tahoma, Arial, 'Noto Naskh Arabic', 'Segoe UI', sans-serif; font-size: 14px; background: #fff; }
           .receipt {
-            width: 74mm;
+            width: 78mm;
             margin: 0 auto;
-            padding: 1.5mm;
+            padding: 0.5mm;
             line-height: 1.4;
             text-align: left;
             direction: ltr;
             unicode-bidi: plaintext;
           }
           .center-line {
-            text-align: center;
+            text-align: left;
             font-weight: 700;
             letter-spacing: 0.2px;
           }
           .muted-line {
-            text-align: center;
+            text-align: left;
             font-size: 12px;
             color: #334155;
           }
@@ -123,7 +123,8 @@ function buildReportPrintHtml(
           }
           .meta-row {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 8px;
             align-items: center;
             font-size: 12px;
             color: #1f2937;
@@ -135,20 +136,22 @@ function buildReportPrintHtml(
           .section {
             border: 1px solid #cbd5e1;
             border-radius: 6px;
-            padding: 6px;
+            padding: 5px 4px;
             margin-bottom: 8px;
             background: #f8fafc;
           }
           .section-title {
-            text-align: center;
+            text-align: left;
             font-size: 13px;
             font-weight: 700;
             color: #0f172a;
             margin-bottom: 6px;
+            direction: rtl;
+            unicode-bidi: plaintext;
           }
           .metric-row {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             gap: 8px;
             align-items: center;
             padding: 3px 0;
@@ -160,21 +163,23 @@ function buildReportPrintHtml(
           .metric-label {
             direction: rtl;
             unicode-bidi: plaintext;
-            text-align: right;
+            text-align: left;
             color: #0f172a;
             font-size: 13px;
             font-weight: 600;
             flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
           }
           .metric-value {
             color: #111827;
             font-weight: 700;
             font-size: 13px;
-            min-width: 82px;
-            text-align: right;
+            min-width: 72px;
+            text-align: left;
           }
           .thanks {
-            text-align: center;
+            text-align: left;
             margin-top: 8px;
             font-weight: 700;
             color: #0f172a;
