@@ -251,12 +251,12 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             margin: 3px auto;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 11px;
+            font-size: 10px;
           }
           .items th,
           .items td {
             border-bottom: 1px dashed #cbd5e1;
-            padding: 2px 1px;
+            padding: 1px 0.5px;
             vertical-align: top;
           }
           .items thead th {
@@ -264,7 +264,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             border-top: 1px dashed #cbd5e1;
           }
           .col-name {
-            width: 48%;
+            width: 40%;
             text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
@@ -272,12 +272,12 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             overflow-wrap: anywhere;
           }
           .col-qty {
-            width: 16%;
+            width: 15%;
             text-align: left;
           }
           .col-price,
           .col-total {
-            width: 18%;
+            width: 22.5%;
             text-align: left;
           }
           .totals {
@@ -340,7 +340,15 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
                   return `<div class="receipt-line shop-meta">${escapeHtml(line)}</div>`
                 }
 
-                const label = line.slice(0, separatorIndex).trim()
+                const rawLabel = line.slice(0, separatorIndex).trim()
+                const label =
+                  rawLabel === 'Total Amount'
+                    ? 'المجموع'
+                    : rawLabel === 'Paid Amount'
+                      ? 'المدفوع'
+                      : rawLabel === 'Remaining'
+                        ? 'الباقي'
+                        : rawLabel
                 const value = line.slice(separatorIndex + 1).trim()
                 return `
                   <div class="total-row">
