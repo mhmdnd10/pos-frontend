@@ -251,7 +251,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             margin: 2px 0 0;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 8.5px;
+            font-size: 9.5px;
             color: #000;
           }
           .items th,
@@ -265,6 +265,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             font-weight: 800;
             border-top: 1px dashed #cbd5e1;
             color: #000;
+            font-size: 9px;
           }
           .col-name {
             width: 26%;
@@ -299,7 +300,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             padding: 0;
             color: #000;
             font-weight: 800;
-            font-size: 8px;
+            font-size: 9px;
             line-height: 1;
           }
           .total-label {
@@ -311,6 +312,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             overflow-wrap: anywhere;
             color: #000;
             white-space: nowrap;
+            font-size: 9px;
           }
           .total-value {
             text-align: left;
@@ -318,6 +320,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             color: #000;
             flex: 0 0 auto;
             white-space: nowrap;
+            font-size: 9px;
           }
         </style>
       </head>
