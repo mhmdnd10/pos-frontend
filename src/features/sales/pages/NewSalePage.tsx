@@ -287,34 +287,37 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             color: #000;
           }
           .totals {
-            margin-top: 2px;
+            margin-top: 0;
             border-top: 1px dashed #475569;
-            padding-top: 2px;
+            padding-top: 1px;
           }
           .total-row {
             display: flex;
             justify-content: flex-start;
-            align-items: baseline;
-            gap: 2px;
             align-items: center;
-            padding: 1px 0;
+            gap: 1px;
+            padding: 0;
             color: #000;
             font-weight: 800;
+            font-size: 8px;
+            line-height: 1;
           }
           .total-label {
             min-width: 0;
+            flex: 0 1 auto;
             text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
             overflow-wrap: anywhere;
             color: #000;
-            flex: 1 1 auto;
+            white-space: nowrap;
           }
           .total-value {
             text-align: left;
-            min-width: 12mm;
+            min-width: 10mm;
             color: #000;
             flex: 0 0 auto;
+            white-space: nowrap;
           }
         </style>
       </head>
