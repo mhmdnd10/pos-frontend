@@ -69,7 +69,8 @@ function toOptionalNumber(value?: string) {
     return undefined
   }
 
-  const parsed = Number(value)
+  const normalizedValue = value.trim().replace(',', '.')
+  const parsed = Number(normalizedValue)
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
@@ -440,7 +441,16 @@ export function ProductsPage() {
                 step="0.01"
                 placeholder="0"
               />
-              <FormField form={createForm} name="stock_quantity" label="Stock Quantity" type="number" min="0" step="0.01" placeholder="0" />
+              <FormField
+                form={createForm}
+                name="stock_quantity"
+                label="Stock Quantity"
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="0"
+              />
               <div className="md:col-span-2">
                 <FormField form={createForm} name="description" label="Description" placeholder="Optional description" />
               </div>
@@ -499,7 +509,16 @@ export function ProductsPage() {
                 step="0.01"
                 placeholder="0"
               />
-              <FormField form={editForm} name="stock_quantity" label="Stock Quantity" type="number" min="0" step="0.01" placeholder="0" />
+              <FormField
+                form={editForm}
+                name="stock_quantity"
+                label="Stock Quantity"
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="0"
+              />
               <div className="md:col-span-2">
                 <FormField form={editForm} name="description" label="Description" placeholder="Optional description" />
               </div>

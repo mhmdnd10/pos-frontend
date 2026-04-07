@@ -28,14 +28,20 @@ interface ReturnLine {
 
 type ReturnMode = 'by-invoice' | 'without-invoice'
 
-function toPositiveInteger(value: string) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+function parseNumericValue(value?: string) {
+  const normalizedValue = (value ?? '').trim().replace(',', '.')
+  const parsed = Number(normalizedValue)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function toPositiveQuantity(value: string) {
+  const parsed = parseNumericValue(value)
+  return parsed !== null && parsed > 0 ? parsed : null
 }
 
 function toNonNegativeNumber(value: string) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  const parsed = parseNumericValue(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
 }
 
 function extractSaleItems(source: Record<string, unknown>): ReturnLine[] {
@@ -468,7 +474,7 @@ export function ReturnSalePage() {
     const parsedItems = returnLines
       .map((line) => {
         const productId = Number(line.product_id)
-        const quantity = toPositiveInteger(line.quantity)
+        const quantity = toPositiveQuantity(line.quantity)
         const unitPrice = toNonNegativeNumber(line.unit_price)
 
         if (!Number.isFinite(productId) || productId <= 0 || !quantity || unitPrice === null) {

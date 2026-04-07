@@ -83,24 +83,30 @@ interface ProductMeta {
   availableQuantity: number
 }
 
-function toPositiveNumber(value: string) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+function parseNumericValue(value?: string) {
+  const normalizedValue = (value ?? '').trim().replace(',', '.')
+  const parsed = Number(normalizedValue)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
-function toPositiveInteger(value: string) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+function toPositiveNumber(value: string) {
+  const parsed = parseNumericValue(value)
+  return parsed !== null && parsed > 0 ? parsed : null
+}
+
+function toPositiveQuantity(value: string) {
+  const parsed = parseNumericValue(value)
+  return parsed !== null && parsed > 0 ? parsed : null
 }
 
 function toNonNegativeNumber(value?: string) {
-  const parsed = Number(value || 0)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+  const parsed = parseNumericValue(value)
+  return parsed !== null && parsed >= 0 ? parsed : 0
 }
 
 function toNonNegativeNumberOrNull(value?: string) {
-  const parsed = Number(value || 0)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  const parsed = parseNumericValue(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
 }
 
 function escapeHtml(value: string) {
@@ -392,7 +398,7 @@ export function NewSalePage() {
     const draftItems = values.items
       .map((item) => {
         const productId = toPositiveNumber(item.product_id)
-        const quantity = toPositiveInteger(item.quantity)
+        const quantity = toPositiveQuantity(item.quantity)
         const unitPrice = toNonNegativeNumberOrNull(item.unit_price)
 
         if (!productId || !quantity || unitPrice === null) {
@@ -450,7 +456,7 @@ export function NewSalePage() {
               const parsedItems = values.items
                 .map((item, index) => {
                   const productId = toPositiveNumber(item.product_id)
-                  const quantity = toPositiveInteger(item.quantity)
+                  const quantity = toPositiveQuantity(item.quantity)
                   const unitPrice = toNonNegativeNumberOrNull(item.unit_price)
 
                   if (!productId) {
