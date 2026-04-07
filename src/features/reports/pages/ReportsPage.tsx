@@ -153,11 +153,9 @@ function buildReportPrintHtml(
             unicode-bidi: plaintext;
           }
           .metric-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 8px;
+            display: block;
             align-items: center;
-            padding: 3px 0;
+            padding: 3px 0 4px;
             border-bottom: 1px dotted #cbd5e1;
           }
           .metric-row:last-child {
@@ -168,18 +166,21 @@ function buildReportPrintHtml(
             unicode-bidi: plaintext;
             text-align: left;
             color: #0f172a;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
             min-width: 0;
             overflow-wrap: anywhere;
             line-height: 1.25;
+            display: block;
           }
           .metric-value {
             color: #111827;
             font-weight: 700;
             font-size: 13px;
-            min-width: 20mm;
+            min-width: 0;
             text-align: left;
+            display: block;
+            margin-top: 1px;
           }
           .thanks {
             text-align: left;

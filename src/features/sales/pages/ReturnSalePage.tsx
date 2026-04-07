@@ -419,11 +419,24 @@ export function ReturnSalePage() {
       width: 78mm;
       margin: 0 auto;
       padding: 0.5mm 0.5mm 0 0.5mm;
-      line-height: 1.35;
-      white-space: pre;
+      line-height: 1.25;
       text-align: left;
       direction: ltr;
       unicode-bidi: plaintext;
+    }
+    .receipt-line {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      margin: 0;
+      line-height: 1.15;
+    }
+    .receipt-block {
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .receipt-block + .receipt-block {
+      margin-top: 1px;
     }
     .items {
       width: 100%;
@@ -468,10 +481,39 @@ export function ReturnSalePage() {
       color: #111827;
       font-weight: 800;
     }
+    .totals {
+      margin-top: 4px;
+      border-top: 1px dashed #475569;
+      padding-top: 4px;
+    }
+    .total-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: center;
+      padding: 2px 0;
+      color: #111827;
+      font-weight: 700;
+    }
+    .total-label {
+      min-width: 0;
+      text-align: left;
+      direction: rtl;
+      unicode-bidi: plaintext;
+      overflow-wrap: anywhere;
+    }
+    .total-value {
+      text-align: left;
+      min-width: 16mm;
+    }
   </style>
 </head>
 <body>
-  <pre class="receipt header-line">${receiptLines.slice(0, !isWalkinReturn && printable.activeInvoice ? 9 : 8).join('\r\n')}</pre>
+  <div class="receipt header-line">
+    ${receiptLines.slice(0, !isWalkinReturn && printable.activeInvoice ? 9 : 8)
+      .map((line) => `<div class="receipt-block receipt-line">${escapeHtml(line)}</div>`)
+      .join('')}
+  </div>
   <table class="items">
     <thead>
       <tr>
@@ -485,7 +527,30 @@ export function ReturnSalePage() {
       ${itemRowsHtml}
     </tbody>
   </table>
-  <pre class="receipt">${receiptLines.slice(!isWalkinReturn && printable.activeInvoice ? 9 : 8).join('\r\n')}</pre>
+  <div class="receipt totals">
+    ${receiptLines
+      .slice(!isWalkinReturn && printable.activeInvoice ? 9 : 8)
+      .map((line) => {
+        if (!line.trim()) {
+          return ''
+        }
+
+        const separatorIndex = line.indexOf(':')
+        if (separatorIndex === -1) {
+          return `<div class="receipt-block receipt-line">${escapeHtml(line)}</div>`
+        }
+
+        const label = line.slice(0, separatorIndex).trim()
+        const value = line.slice(separatorIndex + 1).trim()
+        return `
+          <div class="total-row">
+            <span class="total-label">${escapeHtml(label)}</span>
+            <span class="total-value">${escapeHtml(value)}</span>
+          </div>
+        `
+      })
+      .join('')}
+  </div>
 </body>
 </html>`
 

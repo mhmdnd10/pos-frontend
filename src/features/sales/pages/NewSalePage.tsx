@@ -221,14 +221,16 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             width: 78mm;
             margin: 0 auto;
             padding: 0.5mm 0.5mm 0 0.5mm;
-            line-height: 1.35;
+            line-height: 1.25;
             text-align: left;
             direction: ltr;
             unicode-bidi: plaintext;
           }
           .receipt-line {
-            white-space: pre-wrap;
+            white-space: normal;
             overflow-wrap: anywhere;
+            margin: 0;
+            line-height: 1.15;
           }
           .shop-name,
           .shop-subtitle,
@@ -236,12 +238,20 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             color: #111827;
             font-weight: 700;
           }
+          .receipt-block {
+            display: block;
+            margin: 0;
+            padding: 0;
+          }
+          .receipt-block + .receipt-block {
+            margin-top: 1px;
+          }
           .items {
             width: 100%;
             margin: 3px auto;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 12px;
+            font-size: 11px;
           }
           .items th,
           .items td {
@@ -254,7 +264,7 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             border-top: 1px dashed #cbd5e1;
           }
           .col-name {
-            width: 52%;
+            width: 48%;
             text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
@@ -262,12 +272,12 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             overflow-wrap: anywhere;
           }
           .col-qty {
-            width: 14%;
+            width: 16%;
             text-align: left;
           }
           .col-price,
           .col-total {
-            width: 17%;
+            width: 18%;
             text-align: left;
           }
           .totals {
@@ -276,25 +286,24 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
             padding-top: 4px;
           }
           .total-row {
-            display: flex;
-            justify-content: flex-start;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 6px;
             align-items: center;
             padding: 2px 0;
             color: #111827;
             font-weight: 700;
           }
           .total-label {
-            min-width: 30mm;
+            min-width: 0;
             text-align: left;
             direction: rtl;
             unicode-bidi: plaintext;
             overflow-wrap: anywhere;
           }
           .total-value {
-            margin-left: auto;
             text-align: left;
-            min-width: 18mm;
+            min-width: 16mm;
           }
         </style>
       </head>
@@ -303,22 +312,22 @@ function buildReceiptHtml(receipt: PrintableReceipt) {
           ${headerLines
             .map((line, index) => {
               const className = index < 4 ? 'receipt-line shop-name' : index === 4 ? 'receipt-line' : 'receipt-line shop-meta'
-              return `<div class="${className}">${escapeHtml(line)}</div>`
+              return `<div class="receipt-block ${className}">${escapeHtml(line)}</div>`
             })
             .join('')}
-        <table class="items">
-          <thead>
-            <tr>
-              <th class="col-name">العرض</th>
-              <th class="col-qty">الكمية</th>
-              <th class="col-price">السعر</th>
-              <th class="col-total">المجموع</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemRowsHtml}
-          </tbody>
-        </table>
+          <table class="items">
+            <thead>
+              <tr>
+                <th class="col-name">العرض</th>
+                <th class="col-qty">الكمية</th>
+                <th class="col-price">السعر</th>
+                <th class="col-total">المجموع</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemRowsHtml}
+            </tbody>
+          </table>
           <div class="totals">
             ${footerLines
               .map((line) => {
