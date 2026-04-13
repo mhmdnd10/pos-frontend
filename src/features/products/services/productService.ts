@@ -3,6 +3,41 @@ import { normalizeItemResponse, normalizeListResponse } from '@/lib/api/response
 import { endpoints } from '@/lib/constants/endpoints'
 import type { Product, ProductPayload } from '@/features/products/types'
 
+function appendIfPresent(formData: FormData, key: string, value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    return
+  }
+
+  if (value instanceof File) {
+    formData.append(key, value)
+    return
+  }
+
+  formData.append(key, String(value))
+}
+
+function toProductFormData(payload: ProductPayload) {
+  const formData = new FormData()
+
+  appendIfPresent(formData, 'name', payload.name)
+  appendIfPresent(formData, 'barcode', payload.barcode)
+  appendIfPresent(formData, 'size', payload.size)
+  appendIfPresent(formData, 'color', payload.color)
+  appendIfPresent(formData, 'brand', payload.brand)
+  appendIfPresent(formData, 'model', payload.model)
+  appendIfPresent(formData, 'shelf_location', payload.shelf_location)
+  appendIfPresent(formData, 'category_id', payload.category_id)
+  appendIfPresent(formData, 'sale_price', payload.sale_price)
+  appendIfPresent(formData, 'purchase_price', payload.purchase_price)
+  appendIfPresent(formData, 'stock_quantity', payload.stock_quantity)
+  appendIfPresent(formData, 'is_active', payload.is_active)
+  appendIfPresent(formData, 'minimum_stock_alert', payload.minimum_stock_alert)
+  appendIfPresent(formData, 'description', payload.description)
+  appendIfPresent(formData, 'image', payload.image)
+
+  return formData
+}
+
 interface ProductListOptions {
   search?: string
   categoryId?: number
@@ -31,7 +66,11 @@ export const productService = {
   },
 
   async create(payload: ProductPayload) {
-    const { data } = await httpClient.post(endpoints.products.list, payload)
+    const { data } = await httpClient.post(endpoints.products.list, toProductFormData(payload), {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
     return normalizeItemResponse<Product>(data)
   },
 
@@ -41,7 +80,15 @@ export const productService = {
   },
 
   async update(id: number, payload: ProductPayload) {
-    const { data } = await httpClient.put(endpoints.products.byId(id), payload)
+    const { data } = await httpClient.post(endpoints.products.byId(id), (() => {
+      const formData = toProductFormData(payload)
+      formData.append('_method', 'PUT')
+      return formData
+    })(), {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
     return normalizeItemResponse<Product>(data)
   },
 

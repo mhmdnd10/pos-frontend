@@ -44,40 +44,13 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#39;')
 }
 
-function buildReportPrintHtml(
-  dailySummary: DailySummaryReport | null,
-  monthlyReport: MonthlySummaryReport | null,
-) {
+function buildReportPrintHtml(title: string, period: string, rows: Array<{ label: string; value: string }>) {
   const now = new Date()
   const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const date = now.toLocaleDateString()
 
-  const dailyRows = dailySummary
-    ? [
-        { label: 'إجمالي المبيعات', value: formatAmount(dailySummary.total_sales) },
-        { label: 'إجمالي المرتجعات', value: formatAmount(dailySummary.total_return_sales) },
-        { label: 'إجمالي المشتريات', value: formatAmount(dailySummary.total_purchases) },
-        { label: 'دفعات العملاء', value: formatAmount(dailySummary.customer_payments) },
-        { label: 'دفعات الموردين', value: formatAmount(dailySummary.supplier_payments) },
-        { label: 'عدد المبيعات', value: formatCount(dailySummary.sales_count) },
-        { label: 'عدد المشتريات', value: formatCount(dailySummary.purchases_count) },
-      ]
-    : []
-
-  const monthlyRows = monthlyReport
-    ? [
-        { label: 'إجمالي المبيعات', value: formatAmount(monthlyReport.total_sales) },
-        { label: 'إجمالي المرتجعات', value: formatAmount(monthlyReport.total_return_sales) },
-        { label: 'إجمالي المشتريات', value: formatAmount(monthlyReport.total_purchases) },
-        { label: 'دفعات العملاء', value: formatAmount(monthlyReport.customer_payments) },
-        { label: 'دفعات الموردين', value: formatAmount(monthlyReport.supplier_payments) },
-        { label: 'عدد المبيعات', value: formatCount(monthlyReport.sales_count) },
-        { label: 'عدد المشتريات', value: formatCount(monthlyReport.purchases_count) },
-      ]
-    : []
-
-  const renderRows = (rows: Array<{ label: string; value: string }>) =>
-    rows
+  const renderRows = (rowsToRender: Array<{ label: string; value: string }>) =>
+    rowsToRender
       .map(
         (row) => `
           <div class="metric-row">
@@ -153,10 +126,9 @@ function buildReportPrintHtml(
             unicode-bidi: plaintext;
           }
           .metric-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1.4fr) minmax(20mm, 0.6fr);
-            column-gap: 6px;
-            align-items: center;
+            display: flex;
+            align-items: baseline;
+            gap: 2mm;
             padding: 3px 0 4px;
             border-bottom: 1px dotted #cbd5e1;
           }
@@ -171,6 +143,7 @@ function buildReportPrintHtml(
             font-size: 11px;
             font-weight: 700;
             min-width: 0;
+            flex: 0 0 41mm;
             overflow-wrap: anywhere;
             line-height: 1.25;
           }
@@ -181,8 +154,7 @@ function buildReportPrintHtml(
             min-width: 0;
             text-align: left;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: clip;
+            flex: 0 1 auto;
           }
           .thanks {
             text-align: left;
@@ -202,28 +174,15 @@ function buildReportPrintHtml(
           <div class="muted-line">03109497 | 03909497</div>
 
           <div class="divider"></div>
-          <div class="center-line">REPORT PRINT</div>
+          <div class="center-line">${escapeHtml(title)}</div>
           <div class="meta-row"><span class="meta-label">Date</span><span>${escapeHtml(date)}</span></div>
           <div class="meta-row"><span class="meta-label">Time</span><span>${escapeHtml(time)}</span></div>
           <div class="divider"></div>
 
-          ${
-            dailySummary
-              ? `<section class="section">
-                  <div class="section-title">ملخص يومي (${escapeHtml(dailySummary.business_date)})</div>
-                  ${renderRows(dailyRows)}
-                </section>`
-              : ''
-          }
-
-          ${
-            monthlyReport
-              ? `<section class="section">
-                  <div class="section-title">ملخص شهري (${escapeHtml(monthlyReport.month)})</div>
-                  ${renderRows(monthlyRows)}
-                </section>`
-              : ''
-          }
+          <section class="section">
+            <div class="section-title">${escapeHtml(period)}</div>
+            ${renderRows(rows)}
+          </section>
 
           <div class="divider"></div>
           <div class="thanks">شكرا لشرائكم</div>
@@ -231,6 +190,30 @@ function buildReportPrintHtml(
       </body>
     </html>
   `
+}
+
+function getDailyPrintRows(dailySummary: DailySummaryReport) {
+  return [
+    { label: 'إجمالي المبيعات', value: formatAmount(dailySummary.total_sales) },
+    { label: 'إجمالي المرتجعات', value: formatAmount(dailySummary.total_return_sales) },
+    { label: 'إجمالي المشتريات', value: formatAmount(dailySummary.total_purchases) },
+    { label: 'دفعات العملاء', value: formatAmount(dailySummary.customer_payments) },
+    { label: 'دفعات الموردين', value: formatAmount(dailySummary.supplier_payments) },
+    { label: 'عدد المبيعات', value: formatCount(dailySummary.sales_count) },
+    { label: 'عدد المشتريات', value: formatCount(dailySummary.purchases_count) },
+  ]
+}
+
+function getMonthlyPrintRows(monthlyReport: MonthlySummaryReport) {
+  return [
+    { label: 'إجمالي المبيعات', value: formatAmount(monthlyReport.total_sales) },
+    { label: 'إجمالي المرتجعات', value: formatAmount(monthlyReport.total_return_sales) },
+    { label: 'إجمالي المشتريات', value: formatAmount(monthlyReport.total_purchases) },
+    { label: 'دفعات العملاء', value: formatAmount(monthlyReport.customer_payments) },
+    { label: 'دفعات الموردين', value: formatAmount(monthlyReport.supplier_payments) },
+    { label: 'عدد المبيعات', value: formatCount(monthlyReport.sales_count) },
+    { label: 'عدد المشتريات', value: formatCount(monthlyReport.purchases_count) },
+  ]
 }
 
 function currentMonthValue() {
@@ -403,12 +386,7 @@ export function ReportsPage() {
     archiveMutation.mutate(month)
   }
 
-  function handlePrintReport() {
-    if (!dailySummary && !monthlyReport) {
-      toast.error('Generate or fetch a report before printing.')
-      return
-    }
-
+  function openPrintPopup(html: string) {
     const popup = window.open('', '_blank', 'width=900,height=700')
     if (!popup) {
       toast.error('Please allow popups to print.')
@@ -416,10 +394,32 @@ export function ReportsPage() {
     }
 
     popup.document.open()
-    popup.document.write(buildReportPrintHtml(dailySummary, monthlyReport))
+    popup.document.write(html)
     popup.document.close()
     popup.focus()
     popup.print()
+  }
+
+  function handlePrintDailyReport() {
+    if (!dailySummary) {
+      toast.error('Generate or fetch daily summary before printing.')
+      return
+    }
+
+    openPrintPopup(
+      buildReportPrintHtml('DAILY REPORT PRINT', `ملخص يومي (${dailySummary.business_date})`, getDailyPrintRows(dailySummary)),
+    )
+  }
+
+  function handlePrintMonthlyReport() {
+    if (!monthlyReport) {
+      toast.error('Fetch monthly report before printing.')
+      return
+    }
+
+    openPrintPopup(
+      buildReportPrintHtml('MONTHLY REPORT PRINT', `ملخص شهري (${monthlyReport.month})`, getMonthlyPrintRows(monthlyReport)),
+    )
   }
 
   return (
@@ -435,9 +435,13 @@ export function ReportsPage() {
                 Open Archives
               </Link>
             </Button>
-            <Button type="button" variant="outline" onClick={handlePrintReport}>
+            <Button type="button" variant="outline" onClick={handlePrintDailyReport}>
               <Printer className="h-4 w-4" />
-              Print Report
+              Print Daily
+            </Button>
+            <Button type="button" variant="outline" onClick={handlePrintMonthlyReport}>
+              <Printer className="h-4 w-4" />
+              Print Monthly
             </Button>
           </div>
         }

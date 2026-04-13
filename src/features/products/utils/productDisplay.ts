@@ -4,6 +4,7 @@ interface ProductDisplaySource {
   brand?: string | null
   color?: string | null
   size?: string | null
+  model?: string | null
 }
 
 export function buildProductDisplayName(source: ProductDisplaySource) {
@@ -11,8 +12,9 @@ export function buildProductDisplayName(source: ProductDisplaySource) {
   const brand = typeof source.brand === 'string' ? source.brand.trim() : ''
   const color = typeof source.color === 'string' ? source.color.trim() : ''
   const size = typeof source.size === 'string' ? source.size.trim() : ''
+  const model = typeof source.model === 'string' ? source.model.trim() : ''
 
-  const suffixParts = [brand, color, size].filter((part) => part.length > 0)
+  const suffixParts = [brand, model, color, size].filter((part) => part.length > 0)
 
   if (baseName.length > 0 && suffixParts.length > 0) {
     return `${baseName} - ${suffixParts.join(' - ')}`

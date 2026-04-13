@@ -27,6 +27,8 @@ const productSchema = z.object({
   size: z.string().optional(),
   color: z.string().optional(),
   brand: z.string().optional(),
+  model: z.string().optional(),
+  shelf_location: z.string().optional(),
   category_id: z.string().optional(),
   sale_price: z.string().min(1, 'Sale price is required'),
   purchase_price: z.string().min(1, 'Purchase price is required'),
@@ -81,12 +83,24 @@ function toPayload(values: ProductSchema): ProductPayload {
     size: values.size,
     color: values.color,
     brand: values.brand,
+    model: values.model,
+    shelf_location: values.shelf_location,
     category_id: toOptionalNumber(values.category_id),
     sale_price: toOptionalNumber(values.sale_price),
     purchase_price: toOptionalNumber(values.purchase_price),
     stock_quantity: toOptionalNumber(values.stock_quantity),
     description: values.description,
   }
+}
+
+function toPayloadWithImage(values: ProductSchema, imageFile: File | null): ProductPayload {
+  const payload = toPayload(values)
+
+  if (imageFile) {
+    payload.image = imageFile
+  }
+
+  return payload
 }
 
 export function ProductsPage() {
@@ -97,6 +111,8 @@ export function ProductsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [createImageFile, setCreateImageFile] = useState<File | null>(null)
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const queryClient = useQueryClient()
   const createCardRef = useRef<HTMLDivElement | null>(null)
   const editCardRef = useRef<HTMLDivElement | null>(null)
@@ -109,6 +125,8 @@ export function ProductsPage() {
       size: '',
       color: '',
       brand: '',
+      model: '',
+      shelf_location: '',
       category_id: '',
       sale_price: '',
       purchase_price: '',
@@ -125,6 +143,8 @@ export function ProductsPage() {
       size: '',
       color: '',
       brand: '',
+      model: '',
+      shelf_location: '',
       category_id: '',
       sale_price: '',
       purchase_price: '',
@@ -159,7 +179,18 @@ export function ProductsPage() {
     }
 
     return rows.filter((row) => {
-      const haystack = [row.name, row.barcode, row.sku, row.category_name, row.category?.name, row.brand, row.color, row.size]
+      const haystack = [
+        row.name,
+        row.barcode,
+        row.sku,
+        row.category_name,
+        row.category?.name,
+        row.brand,
+        row.model,
+        row.color,
+        row.size,
+        row.shelf_location,
+      ]
         .filter((value) => typeof value === 'string' && value.trim().length > 0)
         .join(' ')
         .toLowerCase()
@@ -178,6 +209,7 @@ export function ProductsPage() {
       toast.success('Product created successfully.')
       setIsCreateOpen(false)
       createForm.reset()
+      setCreateImageFile(null)
       await invalidate()
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create product.')),
@@ -188,6 +220,7 @@ export function ProductsPage() {
     onSuccess: async () => {
       toast.success('Product updated successfully.')
       setEditing(null)
+      setEditImageFile(null)
       await invalidate()
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update product.')),
@@ -250,7 +283,7 @@ export function ProductsPage() {
           <Input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search by name, barcode, brand, color, or size"
+            placeholder="Search by name, barcode, brand, model, color, size, or shelf"
           />
         </div>
         <div>
@@ -301,8 +334,10 @@ export function ProductsPage() {
               { key: 'name', header: 'Name' },
               { key: 'barcode', header: 'Barcode', render: (row) => String(row.barcode ?? row.sku ?? '-') },
               { key: 'brand', header: 'Brand', render: (row) => String(row.brand ?? '-') },
+              { key: 'model', header: 'Model', render: (row) => String(row.model ?? '-') },
               { key: 'color', header: 'Color', render: (row) => String(row.color ?? '-') },
               { key: 'size', header: 'Size', render: (row) => String(row.size ?? '-') },
+              { key: 'shelf_location', header: 'Shelf Location', render: (row) => String(row.shelf_location ?? '-') },
               {
                 key: 'category_id',
                 header: 'Category',
@@ -346,12 +381,15 @@ export function ProductsPage() {
                       size="sm"
                       onClick={() => {
                         setEditing(row)
+                        setEditImageFile(null)
                         editForm.reset({
                           name: row.name,
                           barcode: String(row.barcode ?? row.sku ?? ''),
                           size: String(row.size ?? ''),
                           color: String(row.color ?? ''),
                           brand: String(row.brand ?? ''),
+                          model: String(row.model ?? ''),
+                          shelf_location: String(row.shelf_location ?? ''),
                           category_id: row.category_id ? String(row.category_id) : '',
                           sale_price: String(row.sale_price ?? row.price ?? ''),
                           purchase_price: String(row.purchase_price ?? row.cost_price ?? ''),
@@ -404,15 +442,17 @@ export function ProductsPage() {
             <form
               className="grid gap-4 md:grid-cols-2"
               onSubmit={createForm.handleSubmit(
-                (values) => createMutation.mutate(toPayload(values)),
+                (values) => createMutation.mutate(toPayloadWithImage(values, createImageFile)),
                 () => toast.error('Please fill all required product fields.'),
               )}
             >
               <FormField form={createForm} name="name" label="Name" placeholder="Product name" />
               <FormField form={createForm} name="barcode" label="Barcode" placeholder="Barcode" />
               <FormField form={createForm} name="brand" label="Brand" placeholder="Brand" />
+              <FormField form={createForm} name="model" label="Model" placeholder="Model" />
               <FormField form={createForm} name="color" label="Color" placeholder="Color" />
               <FormField form={createForm} name="size" label="Size" placeholder="Size" />
+              <FormField form={createForm} name="shelf_location" label="Shelf Location" placeholder="Shelf location" />
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="create_category_id">Category</label>
                 <select
@@ -451,12 +491,33 @@ export function ProductsPage() {
                 inputMode="decimal"
                 placeholder="0"
               />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="create_image">Image</label>
+                <Input
+                  id="create_image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0] ?? null
+                    setCreateImageFile(selected)
+                  }}
+                />
+              </div>
               <div className="md:col-span-2">
                 <FormField form={createForm} name="description" label="Description" placeholder="Optional description" />
               </div>
               <div className="md:col-span-2 flex gap-2">
                 <Button type="submit" disabled={createMutation.isPending}>Create</Button>
-                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setCreateImageFile(null)
+                    setIsCreateOpen(false)
+                  }}
+                >
+                  Cancel
+                </Button>
               </div>
             </form>
           </CardContent>
@@ -472,15 +533,17 @@ export function ProductsPage() {
             <form
               className="grid gap-4 md:grid-cols-2"
               onSubmit={editForm.handleSubmit(
-                (values) => updateMutation.mutate({ id: editing.id, payload: toPayload(values) }),
+                (values) => updateMutation.mutate({ id: editing.id, payload: toPayloadWithImage(values, editImageFile) }),
                 () => toast.error('Please fill all required product fields.'),
               )}
             >
               <FormField form={editForm} name="name" label="Name" placeholder="Product name" />
               <FormField form={editForm} name="barcode" label="Barcode" placeholder="Barcode" />
               <FormField form={editForm} name="brand" label="Brand" placeholder="Brand" />
+              <FormField form={editForm} name="model" label="Model" placeholder="Model" />
               <FormField form={editForm} name="color" label="Color" placeholder="Color" />
               <FormField form={editForm} name="size" label="Size" placeholder="Size" />
+              <FormField form={editForm} name="shelf_location" label="Shelf Location" placeholder="Shelf location" />
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="edit_category_id">Category</label>
                 <select
@@ -519,12 +582,34 @@ export function ProductsPage() {
                 inputMode="decimal"
                 placeholder="0"
               />
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="edit_image">Image</label>
+                <Input
+                  id="edit_image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0] ?? null
+                    setEditImageFile(selected)
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">Choose a file only if you want to replace current image.</p>
+              </div>
               <div className="md:col-span-2">
                 <FormField form={editForm} name="description" label="Description" placeholder="Optional description" />
               </div>
               <div className="md:col-span-2 flex gap-2">
                 <Button type="submit" disabled={updateMutation.isPending}>Save</Button>
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditImageFile(null)
+                    setEditing(null)
+                  }}
+                >
+                  Cancel
+                </Button>
               </div>
             </form>
           </CardContent>

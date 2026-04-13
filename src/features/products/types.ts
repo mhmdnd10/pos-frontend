@@ -5,6 +5,9 @@ export interface Product {
   size?: string | null
   color?: string | null
   brand?: string | null
+  model?: string | null
+  shelf_location?: string | null
+  search_text?: string | null
   category_name?: string | null
   category?: {
     id?: number
@@ -32,6 +35,8 @@ export interface ProductPayload {
   size?: string
   color?: string
   brand?: string
+  model?: string
+  shelf_location?: string
   category_id?: number
   sale_price?: number
   purchase_price?: number

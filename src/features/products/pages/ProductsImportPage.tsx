@@ -39,7 +39,9 @@ export function ProductsImportPage() {
       'size',
       'color',
       'brand',
-      'image',
+      'model',
+      'shelf_location',
+      'image_url',
       'is_active',
       'minimum_stock_alert',
     ]
@@ -55,6 +57,8 @@ export function ProductsImportPage() {
       'M',
       'Black',
       'UrbanWear',
+      '2026',
+      'A-12-3',
       'https://example.com/tshirt.jpg',
       '1',
       '5',
@@ -83,19 +87,19 @@ export function ProductsImportPage() {
         <CardContent className="space-y-4">
           <input
             type="file"
-            accept=".xlsx,.xls"
+            accept=".xlsx,.xls,.csv"
             onChange={(event) => {
               const selected = event.target.files?.[0] ?? null
               setFile(selected)
             }}
           />
           <div className="space-y-1 text-xs text-muted-foreground">
-            <p>Select an Excel file (.xlsx or .xls) before importing.</p>
-            <p>Columns expected: name (required), barcode, category_id, description, purchase_price, sale_price, stock_quantity, size, color, brand, image, is_active, minimum_stock_alert.</p>
+            <p>Select an Excel or CSV file (.xlsx, .xls, .csv) before importing.</p>
+            <p>Columns expected: name (required), barcode, category_id, description, purchase_price, sale_price, stock_quantity, size, color, brand, model, shelf_location, image_url, is_active, minimum_stock_alert.</p>
             <div className="rounded-md border bg-muted/20 p-2">
               <p className="font-medium text-foreground">Excel demo</p>
-              <p>Row 1 (headers): name | barcode | category_id | description | purchase_price | sale_price | stock_quantity | size | color | brand | image | is_active | minimum_stock_alert</p>
-              <p>Row 2 (example): T-Shirt Basic | TS-001 | 3 | Cotton t-shirt | 12.5 | 20 | 50 | M | Black | UrbanWear | https://example.com/tshirt.jpg | 1 | 5</p>
+              <p>Row 1 (headers): name | barcode | category_id | description | purchase_price | sale_price | stock_quantity | size | color | brand | model | shelf_location | image_url | is_active | minimum_stock_alert</p>
+              <p>Row 2 (example): T-Shirt Basic | TS-001 | 3 | Cotton t-shirt | 12.5 | 20 | 50 | M | Black | UrbanWear | 2026 | A-12-3 | https://example.com/tshirt.jpg | 1 | 5</p>
             </div>
             <p>Tip: use the CSV template (UTF-8) to avoid question marks (???), then save as .xlsx/.xls before upload.</p>
           </div>

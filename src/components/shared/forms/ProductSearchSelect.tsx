@@ -46,15 +46,23 @@ function getProductLabel(product: Product) {
 }
 
 function getVariantSummary(product: Product) {
-  const parts = [product.brand, product.color, product.size].filter((value) => typeof value === 'string' && value.trim().length > 0)
+  const parts = [product.brand, product.model, product.color, product.size].filter(
+    (value) => typeof value === 'string' && value.trim().length > 0,
+  )
   return parts.length > 0 ? parts.join(' / ') : null
+}
+
+function getLocationSummary(product: Product) {
+  return typeof product.shelf_location === 'string' && product.shelf_location.trim().length > 0
+    ? `Shelf: ${product.shelf_location.trim()}`
+    : null
 }
 
 export function ProductSearchSelect({
   value,
   onSelect,
   onClear,
-  placeholder = 'Search by name, barcode, brand, color, or size',
+  placeholder = 'Search by name, barcode, brand, model, color, size, or shelf',
   className,
 }: ProductSearchSelectProps) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -134,8 +142,10 @@ export function ProductSearchSelect({
           product.category_name,
           product.category?.name,
           product.brand,
+          product.model,
           product.color,
           product.size,
+          product.shelf_location,
         ]
           .filter((value) => typeof value === 'string' && value.trim().length > 0)
           .join(' ')
@@ -188,6 +198,7 @@ export function ProductSearchSelect({
                 const purchasePrice = Number(product.purchase_price ?? product.cost_price ?? 0)
                 const salePrice = Number(product.sale_price ?? product.price ?? 0)
                 const variantSummary = getVariantSummary(product)
+                const locationSummary = getLocationSummary(product)
 
                 return (
                   <button
@@ -204,6 +215,7 @@ export function ProductSearchSelect({
                   >
                     <span className="text-sm font-medium">{getProductLabel(product)}</span>
                     {variantSummary ? <span className="text-xs text-muted-foreground">{variantSummary}</span> : null}
+                    {locationSummary ? <span className="text-xs text-muted-foreground">{locationSummary}</span> : null}
                     <span className="text-xs text-muted-foreground">
                       Purchase: {formatPrice(purchasePrice)} | Sale: {formatPrice(salePrice)} | Stock: {getStock(product)}
                     </span>
@@ -217,6 +229,7 @@ export function ProductSearchSelect({
       {selectedProduct ? (
         <div className="mt-2 rounded-md border bg-muted/20 px-2 py-2 text-xs text-muted-foreground">
           {getVariantSummary(selectedProduct) ? `${getVariantSummary(selectedProduct)} | ` : ''}
+          {getLocationSummary(selectedProduct) ? `${getLocationSummary(selectedProduct)} | ` : ''}
           Purchase: {formatPrice(selectedProduct.purchase_price ?? selectedProduct.cost_price)} | Sale:{' '}
           {formatPrice(selectedProduct.sale_price ?? selectedProduct.price)} | Stock: {getStock(selectedProduct)}
         </div>
