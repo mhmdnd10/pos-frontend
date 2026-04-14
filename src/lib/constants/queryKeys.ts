@@ -7,7 +7,6 @@ export const queryKeys = {
   products: {
     all: ['products'] as const,
     byId: (id: string | number) => ['products', id] as const,
-    byCategory: (categoryId: string | number) => ['products', 'category', categoryId] as const,
   },
   suppliers: {
     all: ['suppliers'] as const,

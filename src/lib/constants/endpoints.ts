@@ -14,8 +14,8 @@ export const endpoints = {
   },
   products: {
     list: '/api/products',
+    filters: '/api/products/filters',
     byId: (id: string | number) => `/api/products/${id}`,
-    byCategory: (categoryId: string | number) => `/api/products/category/${categoryId}`,
     import: '/api/products/import',
   },
   suppliers: {

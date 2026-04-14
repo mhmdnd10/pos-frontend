@@ -41,27 +41,32 @@ function toProductFormData(payload: ProductPayload) {
 interface ProductListOptions {
   search?: string
   categoryId?: number
+  shelfLocation?: string
+  brand?: string
+  size?: string
+  color?: string
 }
 
 export const productService = {
   async list(page = 1, options: ProductListOptions = {}) {
     const search = options.search?.trim()
     const categoryId = options.categoryId
-
-    const hasCategoryFilter = Number.isFinite(categoryId)
-    const shouldUseCategoryEndpoint = hasCategoryFilter && !search
-
-    const endpoint = shouldUseCategoryEndpoint
-      ? endpoints.products.byCategory(Number(categoryId))
-      : endpoints.products.list
+    const shelfLocation = options.shelfLocation?.trim()
+    const brand = options.brand?.trim()
+    const size = options.size?.trim()
+    const color = options.color?.trim()
 
     const params = {
       page,
       ...(search ? { search } : {}),
-      ...(!shouldUseCategoryEndpoint && hasCategoryFilter ? { category_id: Number(categoryId) } : {}),
+      ...(Number.isFinite(categoryId) ? { category_id: Number(categoryId) } : {}),
+      ...(shelfLocation ? { shelf_location: shelfLocation } : {}),
+      ...(brand ? { brand } : {}),
+      ...(size ? { size } : {}),
+      ...(color ? { color } : {}),
     }
 
-    const { data } = await httpClient.get(endpoint, { params })
+    const { data } = await httpClient.get(endpoints.products.filters, { params })
     return normalizeListResponse<Product>(data)
   },
 

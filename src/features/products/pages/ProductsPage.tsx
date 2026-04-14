@@ -38,6 +38,44 @@ const productSchema = z.object({
 
 type ProductSchema = z.infer<typeof productSchema>
 
+type FilterOption = {
+  label: string
+  count: number
+}
+
+const FILTER_OPTION_PAGES = 5
+
+function pushPopularOption(options: Map<string, FilterOption>, rawValue: unknown) {
+  if (typeof rawValue !== 'string') {
+    return
+  }
+
+  const value = rawValue.trim()
+  if (!value) {
+    return
+  }
+
+  const key = value.toLowerCase()
+  const existing = options.get(key)
+
+  if (existing) {
+    existing.count += 1
+    return
+  }
+
+  options.set(key, { label: value, count: 1 })
+}
+
+function toSortedPopularOptions(options: Map<string, FilterOption>) {
+  return Array.from(options.values()).sort((left, right) => {
+    if (right.count !== left.count) {
+      return right.count - left.count
+    }
+
+    return left.label.localeCompare(right.label)
+  })
+}
+
 function resolveProductImageUrl(image: string) {
   const value = image.trim()
   if (!value) {
@@ -111,6 +149,10 @@ export function ProductsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [shelfLocation, setShelfLocation] = useState('')
+  const [brandFilter, setBrandFilter] = useState('')
+  const [sizeFilter, setSizeFilter] = useState('')
+  const [colorFilter, setColorFilter] = useState('')
   const [createImageFile, setCreateImageFile] = useState<File | null>(null)
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const queryClient = useQueryClient()
@@ -154,12 +196,52 @@ export function ProductsPage() {
   })
 
   const productsQuery = useQuery({
-    queryKey: [...queryKeys.products.all, page, searchTerm, selectedCategoryId],
+    queryKey: [...queryKeys.products.all, page, searchTerm, selectedCategoryId, shelfLocation, brandFilter, sizeFilter, colorFilter],
     queryFn: () =>
       productService.list(page, {
         search: searchTerm || undefined,
         categoryId: selectedCategoryId ? Number(selectedCategoryId) : undefined,
+        shelfLocation: shelfLocation || undefined,
+        brand: brandFilter || undefined,
+        size: sizeFilter || undefined,
+        color: colorFilter || undefined,
       }),
+  })
+
+  const productFilterOptionsQuery = useQuery({
+    queryKey: [...queryKeys.products.all, 'filter-options'],
+    queryFn: async () => {
+      const shelfLocations = new Map<string, FilterOption>()
+      const brands = new Map<string, FilterOption>()
+      const sizes = new Map<string, FilterOption>()
+      const colors = new Map<string, FilterOption>()
+
+      for (let pageIndex = 1; pageIndex <= FILTER_OPTION_PAGES; pageIndex += 1) {
+        const response = await productService.list(pageIndex)
+
+        response.items.forEach((product) => {
+          pushPopularOption(shelfLocations, product.shelf_location)
+          pushPopularOption(brands, product.brand)
+          pushPopularOption(sizes, product.size)
+          pushPopularOption(colors, product.color)
+        })
+
+        if (response.meta && pageIndex >= response.meta.last_page) {
+          break
+        }
+
+        if (!response.items.length) {
+          break
+        }
+      }
+
+      return {
+        shelfLocations: toSortedPopularOptions(shelfLocations),
+        brands: toSortedPopularOptions(brands),
+        sizes: toSortedPopularOptions(sizes),
+        colors: toSortedPopularOptions(colors),
+      }
+    },
   })
 
   const categoriesQuery = useQuery({
@@ -169,35 +251,14 @@ export function ProductsPage() {
 
   const categoriesById = new Map((categoriesQuery.data?.items ?? []).map((category) => [category.id, category.name]))
 
-  const visibleProducts = useMemo(() => {
-    const rows = productsQuery.data?.items ?? []
-    const term = searchTerm.toLowerCase().trim()
-    const tokens = term.split(/\s+/).filter((token) => token.length > 0)
-
-    if (!term) {
-      return rows
+  const productFilterOptions = useMemo(() => {
+    return productFilterOptionsQuery.data ?? {
+      shelfLocations: [],
+      brands: [],
+      sizes: [],
+      colors: [],
     }
-
-    return rows.filter((row) => {
-      const haystack = [
-        row.name,
-        row.barcode,
-        row.sku,
-        row.category_name,
-        row.category?.name,
-        row.brand,
-        row.model,
-        row.color,
-        row.size,
-        row.shelf_location,
-      ]
-        .filter((value) => typeof value === 'string' && value.trim().length > 0)
-        .join(' ')
-        .toLowerCase()
-
-      return tokens.every((token) => haystack.includes(token))
-    })
-  }, [productsQuery.data?.items, searchTerm])
+  }, [productFilterOptionsQuery.data])
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.products.all })
@@ -257,6 +318,17 @@ export function ProductsPage() {
     return () => clearTimeout(timeout)
   }, [searchInput])
 
+  useEffect(() => {
+    setPage(1)
+    setSearchInput('')
+    setSearchTerm('')
+    setSelectedCategoryId('')
+    setShelfLocation('')
+    setBrandFilter('')
+    setSizeFilter('')
+    setColorFilter('')
+  }, [])
+
   return (
     <div>
       <PageHeader
@@ -278,8 +350,8 @@ export function ProductsPage() {
       {productsQuery.isLoading ? <div className="rounded-md border p-6 text-sm text-muted-foreground">Loading products...</div> : null}
       {productsQuery.isError ? <div className="rounded-md border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">Failed to load products.</div> : null}
 
-      <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <div className="md:col-span-2">
+      <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="md:col-span-2 xl:col-span-4">
           <Input
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
@@ -299,6 +371,74 @@ export function ProductsPage() {
             {(categoriesQuery.data?.items ?? []).map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={shelfLocation}
+            onChange={(event) => {
+              setShelfLocation(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">All Shelf Locations</option>
+            {productFilterOptions.shelfLocations.map((option) => (
+              <option key={option.label} value={option.label}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={brandFilter}
+            onChange={(event) => {
+              setBrandFilter(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">All Brands</option>
+            {productFilterOptions.brands.map((option) => (
+              <option key={option.label} value={option.label}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={sizeFilter}
+            onChange={(event) => {
+              setSizeFilter(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">All Sizes</option>
+            {productFilterOptions.sizes.map((option) => (
+              <option key={option.label} value={option.label}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            value={colorFilter}
+            onChange={(event) => {
+              setColorFilter(event.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">All Colors</option>
+            {productFilterOptions.colors.map((option) => (
+              <option key={option.label} value={option.label}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -407,7 +547,7 @@ export function ProductsPage() {
                 ),
               },
             ]}
-            rows={visibleProducts}
+            rows={productsQuery.data?.items ?? []}
             getRowId={(row) => String(row.id)}
             emptyMessage="No products found."
           />
